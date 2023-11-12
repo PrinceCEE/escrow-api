@@ -6,7 +6,7 @@ import (
 )
 
 func UsersRouter(c *config.Config) chi.Router {
-	uh := UsersHandler{c}
+	uh := usersHandler{c}
 	r := chi.NewRouter()
 
 	r.Post("/update-account", uh.updateAccount)
