@@ -9,8 +9,8 @@ func UsersRouter(c *config.Config) chi.Router {
 	uh := usersHandler{c}
 	r := chi.NewRouter()
 
-	r.Post("/update-account", uh.updateAccount)
-	r.Post("/change-password", uh.changePassword)
+	r.Put("/update-account", uh.updateAccount)
+	r.Put("/change-password", uh.changePassword)
 
 	return r
 }
