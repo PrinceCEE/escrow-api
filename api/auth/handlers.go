@@ -14,8 +14,22 @@ func NewAuthHandler(c *config.Config) *AuthHandler {
 	return &AuthHandler{c}
 }
 
-func (ah *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request)         {}
-func (ah *AuthHandler) SignIn(w http.ResponseWriter, r *http.Request)         {}
-func (ah *AuthHandler) VerifyCode(w http.ResponseWriter, r *http.Request)     {}
-func (ah *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request)  {}
-func (ah *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {}
+func (ah *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("not implemented"))
+}
+
+func (ah *AuthHandler) SignIn(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("not implemented"))
+}
+
+func (ah *AuthHandler) VerifyCode(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("not implemented"))
+}
+
+func (ah *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("not implemented"))
+}
+
+func (ah *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("not implemented"))
+}
