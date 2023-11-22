@@ -5,6 +5,7 @@ import (
 	"github.com/Bupher-Co/bupher-api/api/businesses"
 	"github.com/Bupher-Co/bupher-api/api/customers"
 	"github.com/Bupher-Co/bupher-api/api/notifications"
+	"github.com/Bupher-Co/bupher-api/api/reports"
 	"github.com/Bupher-Co/bupher-api/api/reviews"
 	"github.com/Bupher-Co/bupher-api/api/transactions"
 	"github.com/Bupher-Co/bupher-api/api/users"
@@ -23,6 +24,7 @@ func initRoutes(c *config.Config) chi.Router {
 	br := businesses.BusinessRouter(c)
 	cr := customers.CustomerRouter(c)
 	rr := reviews.ReviewsRouter(c)
+	reportr := reports.ReportRouter(c)
 
 	// mount the routers
 	r.Mount("/auth", ar)
@@ -33,6 +35,7 @@ func initRoutes(c *config.Config) chi.Router {
 	r.Mount("/businesses", br)
 	r.Mount("/customers", cr)
 	r.Mount("/reviews", rr)
+	r.Mount("/reports", reportr)
 
 	return r
 }
