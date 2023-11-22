@@ -10,10 +10,18 @@ type usersHandler struct {
 	c *config.Config
 }
 
-func (ah *usersHandler) updateAccount(w http.ResponseWriter, r *http.Request) {
+func (uh *usersHandler) getMe(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("not implemented"))
 }
 
-func (ah *usersHandler) changePassword(w http.ResponseWriter, r *http.Request) {
+func (uh *usersHandler) getUser(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("not implemented"))
+}
+
+func (uh *usersHandler) updateAccount(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("not implemented"))
+}
+
+func (uh *usersHandler) changePassword(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("not implemented"))
 }
