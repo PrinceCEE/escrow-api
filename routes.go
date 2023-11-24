@@ -14,28 +14,30 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func initRoutes(c *config.Config) chi.Router {
-	r := chi.NewRouter()
-	ar := auth.AuthRouter(c)
-	ur := users.UsersRouter(c)
-	wr := wallets.WalletsRouter(c)
-	nr := notifications.NotificationRouter(c)
-	tr := transactions.TransactionsRouter(c)
-	br := businesses.BusinessRouter(c)
-	cr := customers.CustomerRouter(c)
-	rr := reviews.ReviewsRouter(c)
-	reportr := reports.ReportRouter(c)
+type routeFunc func(*config.Config) chi.Router
 
-	// mount the routers
-	r.Mount("/auth", ar)
-	r.Mount("/users", ur)
-	r.Mount("/wallets", wr)
-	r.Mount("/notifications", nr)
-	r.Mount("/transactions", tr)
-	r.Mount("/businesses", br)
-	r.Mount("/customers", cr)
-	r.Mount("/reviews", rr)
-	r.Mount("/reports", reportr)
+type routeConfig struct {
+	path string
+	f    routeFunc
+}
+
+func initRoutes(c *config.Config) chi.Router {
+	routes := []routeConfig{
+		{"/auth", auth.AuthRouter},
+		{"/users", users.UsersRouter},
+		{"/wallets", wallets.WalletsRouter},
+		{"/notifications", notifications.NotificationRouter},
+		{"/transactions", transactions.TransactionsRouter},
+		{"/businesses", businesses.BusinessRouter},
+		{"/customers", customers.CustomerRouter},
+		{"/reviews", reviews.ReviewsRouter},
+		{"/reports", reports.ReportRouter},
+	}
+
+	r := chi.NewRouter()
+	for _, v := range routes {
+		r.Mount(v.path, v.f(c))
+	}
 
 	return r
 }
