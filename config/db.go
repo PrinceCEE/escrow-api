@@ -3,7 +3,7 @@ package config
 import "database/sql"
 
 type DbManager struct {
-	Db *sql.DB
+	*sql.DB
 }
 
 func newDbManager(env *Env) *DbManager {
