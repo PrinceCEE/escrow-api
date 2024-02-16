@@ -1,6 +1,7 @@
 package config
 
 import (
+	"flag"
 	"log"
 
 	"github.com/joho/godotenv"
@@ -12,8 +13,14 @@ type Config struct {
 }
 
 func NewConfig() *Config {
-	if err := godotenv.Load(); err != nil {
-		log.Panic(err)
+	var environment string
+	flag.StringVar(&environment, "env", "development", "The environment of the app(development/production)")
+	flag.Parse()
+
+	if environment == "development" {
+		if err := godotenv.Load(); err != nil {
+			log.Panic(err)
+		}
 	}
 
 	env := newEnv()
