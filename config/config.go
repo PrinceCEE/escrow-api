@@ -20,7 +20,9 @@ type Config struct {
 	Logger    *Logger
 }
 
-func NewConfig() *Config {
+var Cfg = newConfig()
+
+func newConfig() *Config {
 	var environment, loglevel string
 
 	flag.StringVar(&environment, "env", "development", "The environment of the app(development/production)")
