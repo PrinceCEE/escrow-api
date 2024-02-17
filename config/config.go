@@ -42,9 +42,14 @@ func newConfig() *Config {
 	}
 
 	env := newEnv()
+	manager, err := newDbManager(env)
+	if err != nil {
+		logger.Log(zerolog.PanicLevel, "error connecting to the db", nil, err)
+	}
+
 	return &Config{
 		Env:       env,
-		DbManager: newDbManager(env),
+		DbManager: manager,
 		Logger:    logger,
 	}
 }
