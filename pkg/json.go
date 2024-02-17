@@ -15,3 +15,7 @@ func ReadJSON(r *http.Request, dst any) error {
 
 	return nil
 }
+
+func WriteJSON(data any) ([]byte, error) {
+	return json.MarshalIndent(data, "", "    ")
+}

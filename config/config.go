@@ -20,7 +20,9 @@ type Config struct {
 	Logger    *Logger
 }
 
-func NewConfig() *Config {
+var Cfg = newConfig()
+
+func newConfig() *Config {
 	var environment, loglevel string
 
 	flag.StringVar(&environment, "env", "development", "The environment of the app(development/production)")
@@ -40,9 +42,14 @@ func NewConfig() *Config {
 	}
 
 	env := newEnv()
+	manager, err := newDbManager(env)
+	if err != nil {
+		logger.Log(zerolog.PanicLevel, "error connecting to the db", nil, err)
+	}
+
 	return &Config{
 		Env:       env,
-		DbManager: newDbManager(env),
+		DbManager: manager,
 		Logger:    logger,
 	}
 }
