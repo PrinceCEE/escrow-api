@@ -2,10 +2,10 @@ package pkg
 
 import "github.com/go-playground/validator/v10"
 
-var v *validator.Validate = validator.New(validator.WithRequiredStructEnabled())
+var v = validator.New(validator.WithRequiredStructEnabled())
 
-func ValidateData(dst any) map[string]string {
-	err := v.Struct(dst)
+func ValidateData(data any) map[string]string {
+	err := v.Struct(data)
 	if err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
 			return map[string]string{"error": err.Error()}
