@@ -1,3 +1,3 @@
 .PHONY: run/api
-run/api/dev:
-	go run ./cmd/app -env=development
+run/app/dev:
+	go run ./cmd/app -env=development -loglevel=debug
