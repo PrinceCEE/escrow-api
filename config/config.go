@@ -17,7 +17,7 @@ type Logger struct {
 type Config struct {
 	DbManager *DbManager
 	Env       *Env
-	Logger    *Logger
+	*Logger
 }
 
 var Cfg = newConfig()

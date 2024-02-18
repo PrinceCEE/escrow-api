@@ -4,11 +4,21 @@ import (
 	"context"
 	"time"
 
+	"github.com/Bupher-Co/bupher-api/repositories"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type Repositories struct {
+	UserRepository,
+	BusinessRepository,
+	AuthRepository,
+	EventRepository,
+	TokenRepository repositories.Repository
+}
+
 type DbManager struct {
-	DB *pgxpool.Pool
+	DB           *pgxpool.Pool
+	Repositories Repositories
 }
 
 func newDbManager(env *Env) (*DbManager, error) {
@@ -25,29 +35,14 @@ func newDbManager(env *Env) (*DbManager, error) {
 		return nil, err
 	}
 
-	return &DbManager{DB: pool}, nil
-}
-
-func (m *DbManager) Save() interface{} {
-	return "Not implemented"
-}
-
-func (m *DbManager) Update() interface{} {
-	return "Not Implemented"
-}
-
-func (m *DbManager) FindOne() interface{} {
-	return "Not implemented"
-}
-
-func (m *DbManager) Find() interface{} {
-	return "Not implemented"
-}
-
-func (m *DbManager) SoftDelete() interface{} {
-	return "Not implemented"
-}
-
-func (m *DbManager) HardDelete() interface{} {
-	return "Not implemented"
+	return &DbManager{
+		DB: pool,
+		Repositories: Repositories{
+			AuthRepository:     repositories.NewAuthRepository(pool),
+			BusinessRepository: repositories.NewBusinessRepository(pool),
+			EventRepository:    repositories.NewEventRepository(pool),
+			TokenRepository:    repositories.NewTokenRepository(pool),
+			UserRepository:     repositories.NewUserRepository(pool),
+		},
+	}, nil
 }
