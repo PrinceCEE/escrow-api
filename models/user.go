@@ -8,5 +8,6 @@ type User struct {
 	IsPhoneNumberVerified bool   `json:"is_phone_number_verified"`
 	IsEmailVerified       bool   `json:"is_email_verified"`
 	RegStage              int    `json:"reg_stage"`
+	AccountType           string `json:"account_type"`
 	ModelMixin
 }

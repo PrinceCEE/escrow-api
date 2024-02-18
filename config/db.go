@@ -10,7 +10,10 @@ import (
 
 type Repositories struct {
 	UserRepository,
-	BusinessRepository repositories.Repository
+	BusinessRepository,
+	AuthRepository,
+	EventRepository,
+	TokenRepository repositories.Repository
 }
 
 type DbManager struct {
@@ -35,8 +38,11 @@ func newDbManager(env *Env) (*DbManager, error) {
 	return &DbManager{
 		DB: pool,
 		Repositories: Repositories{
-			UserRepository:     repositories.NewUserRepository(pool),
+			AuthRepository:     repositories.NewAuthRepository(pool),
 			BusinessRepository: repositories.NewBusinessRepository(pool),
+			EventRepository:    repositories.NewEventRepository(pool),
+			TokenRepository:    repositories.NewTokenRepository(pool),
+			UserRepository:     repositories.NewUserRepository(pool),
 		},
 	}, nil
 }

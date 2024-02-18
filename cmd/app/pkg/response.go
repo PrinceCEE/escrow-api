@@ -21,10 +21,12 @@ var (
 )
 
 type ApiResponseMeta struct {
-	Page       int `json:"page"`
-	PageSize   int `json:"page_size"`
-	Total      int `json:"total"`
-	TotalPages int `json:"total_pages"`
+	Page         *int    `json:"page,omitempty"`
+	PageSize     *int    `json:"page_size,omitempty"`
+	Total        *int    `json:"total,omitempty"`
+	TotalPages   *int    `json:"total_pages,omitempty"`
+	AccessToken  *string `json:"access_token,omitempty"`
+	RefreshToken *string `json:"refresh_token,omitempty"`
 }
 
 type ApiResponse struct {
@@ -56,7 +58,7 @@ func SendResponse(w http.ResponseWriter, b ApiResponse, headers ...map[string]st
 
 	jsonData, err := pkg.WriteJSON(b)
 	if err != nil {
-		config.Cfg.Logger.Log(zerolog.PanicLevel, "error creating json data", nil, err)
+		config.Cfg.Log(zerolog.PanicLevel, "error creating json data", nil, err)
 	}
 
 	w.Write(jsonData)
