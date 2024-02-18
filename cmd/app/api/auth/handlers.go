@@ -6,6 +6,8 @@ import (
 	"github.com/Bupher-Co/bupher-api/cmd/app/pkg"
 )
 
+type SignupInput struct{}
+
 func signUp(w http.ResponseWriter, r *http.Request) {
 	pkg.SendErrorResponse(w, pkg.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
 }
