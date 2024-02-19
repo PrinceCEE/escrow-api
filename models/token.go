@@ -9,8 +9,8 @@ const (
 
 type Token struct {
 	Hash      string    `json:"hash"`
-	TokenType TokenType `json:"token_type"`
 	UserID    string    `json:"user_id"`
+	TokenType TokenType `json:"token_type"`
 	InUse     bool      `json:"in_use"`
 	ModelMixin
 }
