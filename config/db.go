@@ -9,11 +9,11 @@ import (
 )
 
 type Repositories struct {
-	UserRepository,
-	BusinessRepository,
-	AuthRepository,
-	EventRepository,
-	TokenRepository repositories.Repository
+	UserRepository     repositories.UserRepository
+	BusinessRepository repositories.BusinessRepository
+	AuthRepository     repositories.AuthRepository
+	EventRepository    repositories.EventRepository
+	TokenRepository    repositories.TokenRepository
 }
 
 type DbManager struct {
