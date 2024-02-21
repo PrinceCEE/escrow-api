@@ -35,6 +35,7 @@ func newDbManager(env *Env) (*DbManager, error) {
 		return nil, err
 	}
 
+	timeout := 10 * time.Second
 	return &DbManager{
 		DB: pool,
 		Repositories: Repositories{
@@ -42,7 +43,7 @@ func newDbManager(env *Env) (*DbManager, error) {
 			BusinessRepository: repositories.NewBusinessRepository(pool),
 			EventRepository:    repositories.NewEventRepository(pool),
 			TokenRepository:    repositories.NewTokenRepository(pool),
-			UserRepository:     repositories.NewUserRepository(pool),
+			UserRepository:     repositories.NewUserRepository(pool, timeout),
 		},
 	}, nil
 }
