@@ -40,9 +40,9 @@ func newDbManager(env *Env) (*DbManager, error) {
 		DB: pool,
 		Repositories: Repositories{
 			AuthRepository:     repositories.NewAuthRepository(pool, timeout),
-			BusinessRepository: repositories.NewBusinessRepository(pool),
-			EventRepository:    repositories.NewEventRepository(pool),
-			TokenRepository:    repositories.NewTokenRepository(pool),
+			BusinessRepository: repositories.NewBusinessRepository(pool, timeout),
+			EventRepository:    repositories.NewEventRepository(pool, timeout),
+			TokenRepository:    repositories.NewTokenRepository(pool, timeout),
 			UserRepository:     repositories.NewUserRepository(pool, timeout),
 		},
 	}, nil

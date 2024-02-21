@@ -9,7 +9,7 @@ type PasswordHistory struct {
 
 type Auth struct {
 	UserID          string            `json:"user_id"`
-	Password        string            `json:"password"`
+	Password        []byte            `json:"password"`
 	PasswordHistory []PasswordHistory `json:"password_history"`
 	ModelMixin
 }

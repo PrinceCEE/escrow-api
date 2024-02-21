@@ -8,7 +8,7 @@ const (
 )
 
 type Token struct {
-	Hash      string    `json:"hash"`
+	Hash      []byte    `json:"hash"`
 	UserID    string    `json:"user_id"`
 	TokenType TokenType `json:"token_type"`
 	InUse     bool      `json:"in_use"`
