@@ -129,10 +129,7 @@ func (repo *userRepository) Delete(id string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	query := `
-		DELETE FROM users
-		WHERE id = $1
-	`
+	query := `DELETE FROM users WHERE id = $1`
 	_, err := repo.DB.Exec(ctx, query, id)
 	return err
 }
@@ -143,6 +140,8 @@ func (repo *userRepository) SoftDelete(id string) error {
 		return nil
 	}
 
-	u.DeletedAt = time.Now().UTC()
+	now := time.Now().UTC()
+	u.DeletedAt = now
+	u.UpdatedAt = now
 	return repo.Update(u)
 }

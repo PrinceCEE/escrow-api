@@ -3,13 +3,13 @@ package models
 import "time"
 
 type PasswordHistory struct {
-	Password  string
-	Timestamp time.Time
+	Password  []byte    `json:"password"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 type Auth struct {
-	UserID          string
-	Password        string
-	PasswordHistory []PasswordHistory
+	UserID          string            `json:"user_id"`
+	Password        string            `json:"password"`
+	PasswordHistory []PasswordHistory `json:"password_history"`
 	ModelMixin
 }
