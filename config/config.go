@@ -15,8 +15,9 @@ type Logger struct {
 }
 
 type Config struct {
-	DbManager *DbManager
-	Env       *Env
+	DbManager   *DbManager
+	Env         *Env
+	RedisClient *redisClient
 	*Logger
 }
 
@@ -47,10 +48,16 @@ func newConfig() *Config {
 		logger.Log(zerolog.PanicLevel, "error connecting to the db", nil, err)
 	}
 
+	rclient, err := NewRedisClient(*env)
+	if err != nil {
+		logger.Log(zerolog.PanicLevel, "error instantiating redis client", nil, err)
+	}
+
 	return &Config{
-		Env:       env,
-		DbManager: manager,
-		Logger:    logger,
+		Env:         env,
+		DbManager:   manager,
+		Logger:      logger,
+		RedisClient: rclient,
 	}
 }
 
