@@ -141,11 +141,10 @@ func (repo *userRepository) GetByPhoneNumber(phone string, tx pgx.Tx) (*models.U
 	return repo.getByKey("phone_number", phone, tx)
 }
 
-func (repo *userRepository) Delete(id string, tx pgx.Tx) error {
+func (repo *userRepository) Delete(id string, tx pgx.Tx) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	var err error
 	query := `DELETE FROM users WHERE id = $1`
 
 	if tx != nil {
@@ -154,7 +153,7 @@ func (repo *userRepository) Delete(id string, tx pgx.Tx) error {
 		_, err = repo.DB.Exec(ctx, query, id)
 	}
 
-	return err
+	return
 }
 
 func (repo *userRepository) SoftDelete(id string, tx pgx.Tx) error {

@@ -6,15 +6,16 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type TokenRepository interface {
-	Create(t *models.Token) error
-	Update(t *models.Token) error
-	GetById(id string) (*models.Token, error)
-	Delete(id string) error
-	SoftDelete(id string) error
+	Create(t *models.Token, tx pgx.Tx) error
+	Update(t *models.Token, tx pgx.Tx) error
+	GetById(id string, tx pgx.Tx) (*models.Token, error)
+	Delete(id string, tx pgx.Tx) error
+	SoftDelete(id string, tx pgx.Tx) error
 }
 
 type tokenRepository struct {
@@ -26,7 +27,7 @@ func NewTokenRepository(db *pgxpool.Pool, timeout time.Duration) *tokenRepositor
 	return &tokenRepository{DB: db, Timeout: timeout}
 }
 
-func (repo *tokenRepository) Create(t *models.Token) error {
+func (repo *tokenRepository) Create(t *models.Token, tx pgx.Tx) error {
 	now := time.Now().UTC()
 	t.CreatedAt = now
 	t.UpdatedAt = now
@@ -49,10 +50,14 @@ func (repo *tokenRepository) Create(t *models.Token) error {
 		t.UpdatedAt,
 	}
 
+	if tx != nil {
+		return tx.QueryRow(ctx, query, args...).Scan(t.ID, t.Version)
+	}
+
 	return repo.DB.QueryRow(ctx, query, args...).Scan(t.ID, t.Version)
 }
 
-func (repo *tokenRepository) Update(t *models.Token) error {
+func (repo *tokenRepository) Update(t *models.Token, tx pgx.Tx) error {
 	t.UpdatedAt = time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
@@ -63,10 +68,14 @@ func (repo *tokenRepository) Update(t *models.Token) error {
 		return err
 	}
 
+	if tx != nil {
+		return tx.QueryRow(ctx, query).Scan(t.Version)
+	}
+
 	return repo.DB.QueryRow(ctx, query).Scan(t.Version)
 }
 
-func (repo *tokenRepository) GetById(id string) (*models.Token, error) {
+func (repo *tokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -87,7 +96,14 @@ func (repo *tokenRepository) GetById(id string) (*models.Token, error) {
 		WHERE id = $1
 	`
 
-	err := repo.DB.QueryRow(ctx, query, id).Scan(
+	var row pgx.Row
+	if tx != nil {
+		row = tx.QueryRow(ctx, query, id)
+	} else {
+		row = repo.DB.QueryRow(ctx, query, id)
+	}
+
+	err := row.Scan(
 		t.ID,
 		t.Hash,
 		t.UserID,
@@ -105,18 +121,23 @@ func (repo *tokenRepository) GetById(id string) (*models.Token, error) {
 	return t, nil
 }
 
-func (repo *tokenRepository) Delete(id string) error {
+func (repo *tokenRepository) Delete(id string, tx pgx.Tx) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
 	query := `DELETE FROM tokens WHERE id = $1`
 
-	_, err := repo.DB.Exec(ctx, query)
-	return err
+	if tx != nil {
+		_, err = tx.Exec(ctx, query)
+	} else {
+		_, err = repo.DB.Exec(ctx, query)
+	}
+
+	return
 }
 
-func (repo *tokenRepository) SoftDelete(id string) error {
-	t, err := repo.GetById(id)
+func (repo *tokenRepository) SoftDelete(id string, tx pgx.Tx) error {
+	t, err := repo.GetById(id, tx)
 	if err != nil {
 		return err
 	}
@@ -125,5 +146,5 @@ func (repo *tokenRepository) SoftDelete(id string) error {
 	t.UpdatedAt = now
 	t.DeletedAt = now
 
-	return repo.Update(t)
+	return repo.Update(t, tx)
 }

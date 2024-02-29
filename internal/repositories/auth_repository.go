@@ -6,15 +6,16 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type AuthRepository interface {
-	Create(a *models.Auth) error
-	Update(a *models.Auth) error
-	GetById(id string) (*models.Auth, error)
-	Delete(id string) error
-	SoftDelete(id string) error
+	Create(a *models.Auth, tx pgx.Tx) error
+	Update(a *models.Auth, tx pgx.Tx) error
+	GetById(id string, tx pgx.Tx) (*models.Auth, error)
+	Delete(id string, tx pgx.Tx) error
+	SoftDelete(id string, tx pgx.Tx) error
 }
 
 type authRepository struct {
@@ -26,7 +27,7 @@ func NewAuthRepository(db *pgxpool.Pool, timeout time.Duration) *authRepository 
 	return &authRepository{DB: db, Timeout: timeout}
 }
 
-func (repo *authRepository) Create(a *models.Auth) error {
+func (repo *authRepository) Create(a *models.Auth, tx pgx.Tx) error {
 	now := time.Now().UTC()
 	a.CreatedAt = now
 	a.UpdatedAt = now
@@ -42,10 +43,14 @@ func (repo *authRepository) Create(a *models.Auth) error {
 
 	args := []any{a.UserID, a.Password, a.PasswordHistory, a.CreatedAt, a.CreatedAt}
 
+	if tx != nil {
+		return tx.QueryRow(ctx, query, args...).Scan(a.ID, a.Version)
+	}
+
 	return repo.DB.QueryRow(ctx, query, args...).Scan(a.ID, a.Version)
 }
 
-func (repo *authRepository) Update(a *models.Auth) error {
+func (repo *authRepository) Update(a *models.Auth, tx pgx.Tx) error {
 	a.UpdatedAt = time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
@@ -56,10 +61,14 @@ func (repo *authRepository) Update(a *models.Auth) error {
 		return err
 	}
 
+	if tx != nil {
+		return tx.QueryRow(ctx, query).Scan(a.Version)
+	}
+
 	return repo.DB.QueryRow(ctx, query).Scan(a.Version)
 }
 
-func (repo *authRepository) GetById(id string) (*models.Auth, error) {
+func (repo *authRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -79,7 +88,14 @@ func (repo *authRepository) GetById(id string) (*models.Auth, error) {
 		WHERE id = $1
 	`
 
-	err := repo.DB.QueryRow(ctx, query, id).Scan(
+	var row pgx.Row
+	if tx != nil {
+		row = tx.QueryRow(ctx, query, id)
+	} else {
+		row = repo.DB.QueryRow(ctx, query, id)
+	}
+
+	err := row.Scan(
 		a.ID,
 		a.UserID,
 		a.Password,
@@ -96,18 +112,23 @@ func (repo *authRepository) GetById(id string) (*models.Auth, error) {
 	return a, nil
 }
 
-func (repo *authRepository) Delete(id string) error {
+func (repo *authRepository) Delete(id string, tx pgx.Tx) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
 	query := `DELETE FROM auths WHERE id = $1`
 
-	_, err := repo.DB.Exec(ctx, query)
-	return err
+	if tx != nil {
+		_, err = tx.Exec(ctx, query)
+	} else {
+		_, err = repo.DB.Exec(ctx, query)
+	}
+
+	return
 }
 
-func (repo *authRepository) SoftDelete(id string) error {
-	a, err := repo.GetById(id)
+func (repo *authRepository) SoftDelete(id string, tx pgx.Tx) error {
+	a, err := repo.GetById(id, tx)
 	if err != nil {
 		return err
 	}
@@ -116,5 +137,5 @@ func (repo *authRepository) SoftDelete(id string) error {
 	a.UpdatedAt = now
 	a.DeletedAt = now
 
-	return repo.Update(a)
+	return repo.Update(a, tx)
 }
