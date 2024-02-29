@@ -7,17 +7,18 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type UserRepository interface {
-	Create(u *models.User) error
-	Update(u *models.User) error
-	GetById(id string) (*models.User, error)
-	GetByEmail(email string) (*models.User, error)
-	GetByPhoneNumber(phone string) (*models.User, error)
-	Delete(id string) error
-	SoftDelete(id string) error
+	Create(u *models.User, tx pgx.Tx) error
+	Update(u *models.User, tx pgx.Tx) error
+	GetById(id string, tx pgx.Tx) (*models.User, error)
+	GetByEmail(email string, tx pgx.Tx) (*models.User, error)
+	GetByPhoneNumber(phone string, tx pgx.Tx) (*models.User, error)
+	Delete(id string, tx pgx.Tx) error
+	SoftDelete(id string, tx pgx.Tx) error
 }
 
 type userRepository struct {
@@ -29,7 +30,7 @@ func NewUserRepository(db *pgxpool.Pool, timeout time.Duration) *userRepository 
 	return &userRepository{DB: db, Timeout: timeout}
 }
 
-func (repo *userRepository) Create(u *models.User) error {
+func (repo *userRepository) Create(u *models.User, tx pgx.Tx) error {
 	now := time.Now().UTC()
 	u.CreatedAt = now
 	u.UpdatedAt = now
@@ -45,10 +46,14 @@ func (repo *userRepository) Create(u *models.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
+	if tx != nil {
+		return tx.QueryRow(ctx, query, args...).Scan(u.ID, u.Version)
+	}
+
 	return repo.DB.QueryRow(ctx, query, args...).Scan(u.ID, u.Version)
 }
 
-func (repo *userRepository) Update(u *models.User) error {
+func (repo *userRepository) Update(u *models.User, tx pgx.Tx) error {
 	u.UpdatedAt = time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
@@ -59,10 +64,14 @@ func (repo *userRepository) Update(u *models.User) error {
 		return err
 	}
 
+	if tx != nil {
+		return tx.QueryRow(ctx, query).Scan(u.Version)
+	}
+
 	return repo.DB.QueryRow(ctx, query).Scan(u.Version)
 }
 
-func (repo *userRepository) getByKey(key string, value any) (*models.User, error) {
+func (repo *userRepository) getByKey(key string, value any, tx pgx.Tx) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -91,7 +100,14 @@ func (repo *userRepository) getByKey(key string, value any) (*models.User, error
 		key,
 	)
 
-	err := repo.DB.QueryRow(ctx, query, value).Scan(
+	var row pgx.Row
+	if tx != nil {
+		row = tx.QueryRow(ctx, query, value)
+	} else {
+		row = repo.DB.QueryRow(ctx, query, value)
+	}
+
+	err := row.Scan(
 		u.ID,
 		u.Email,
 		u.PhoneNumber,
@@ -113,29 +129,36 @@ func (repo *userRepository) getByKey(key string, value any) (*models.User, error
 	return u, nil
 }
 
-func (repo *userRepository) GetById(id string) (*models.User, error) {
-	return repo.getByKey("id", id)
+func (repo *userRepository) GetById(id string, tx pgx.Tx) (*models.User, error) {
+	return repo.getByKey("id", id, tx)
 }
 
-func (repo *userRepository) GetByEmail(email string) (*models.User, error) {
-	return repo.getByKey("email", email)
+func (repo *userRepository) GetByEmail(email string, tx pgx.Tx) (*models.User, error) {
+	return repo.getByKey("email", email, tx)
 }
 
-func (repo *userRepository) GetByPhoneNumber(phone string) (*models.User, error) {
-	return repo.getByKey("phone_number", phone)
+func (repo *userRepository) GetByPhoneNumber(phone string, tx pgx.Tx) (*models.User, error) {
+	return repo.getByKey("phone_number", phone, tx)
 }
 
-func (repo *userRepository) Delete(id string) error {
+func (repo *userRepository) Delete(id string, tx pgx.Tx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
+	var err error
 	query := `DELETE FROM users WHERE id = $1`
-	_, err := repo.DB.Exec(ctx, query, id)
+
+	if tx != nil {
+		_, err = tx.Exec(ctx, query, id)
+	} else {
+		_, err = repo.DB.Exec(ctx, query, id)
+	}
+
 	return err
 }
 
-func (repo *userRepository) SoftDelete(id string) error {
-	u, err := repo.GetById(id)
+func (repo *userRepository) SoftDelete(id string, tx pgx.Tx) error {
+	u, err := repo.GetById(id, tx)
 	if err != nil {
 		return nil
 	}
@@ -143,5 +166,5 @@ func (repo *userRepository) SoftDelete(id string) error {
 	now := time.Now().UTC()
 	u.DeletedAt = now
 	u.UpdatedAt = now
-	return repo.Update(u)
+	return repo.Update(u, tx)
 }
