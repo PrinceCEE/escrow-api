@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/models"
-	"github.com/Bupher-Co/bupher-api/pkg"
+	"github.com/Bupher-Co/bupher-api/internal/models"
+	"github.com/Bupher-Co/bupher-api/pkg/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -51,7 +51,7 @@ func (repo *authRepository) Update(a *models.Auth) error {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	query, err := pkg.GetUpdateQueryFromStruct(a, "auths")
+	query, err := utils.GetUpdateQueryFromStruct(a, "auths")
 	if err != nil {
 		return err
 	}

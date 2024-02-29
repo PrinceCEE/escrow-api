@@ -5,16 +5,18 @@ import (
 
 	appPkg "github.com/Bupher-Co/bupher-api/cmd/app/pkg"
 	"github.com/Bupher-Co/bupher-api/config"
-	"github.com/Bupher-Co/bupher-api/pkg"
+	"github.com/Bupher-Co/bupher-api/pkg/json"
+	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/Bupher-Co/bupher-api/pkg/validator"
 	"github.com/rs/zerolog"
 )
 
 func signUp(w http.ResponseWriter, r *http.Request) {
 	var body *signUpDto
 
-	err := pkg.ReadJSON(r, body)
+	err := json.ReadJSON(r, body)
 	if err != nil {
-		config.Cfg.Log(zerolog.InfoLevel, "error reading request body", nil, err)
+		config.Config.Logger.Log(zerolog.InfoLevel, "error reading request body", nil, err)
 		appPkg.SendErrorResponse(
 			w,
 			appPkg.ApiResponse{Message: err.Error()},
@@ -24,9 +26,9 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validationErrors := pkg.ValidateData(body)
+	validationErrors := validator.ValidateData(body)
 	if validationErrors != nil {
-		config.Cfg.Log(zerolog.InfoLevel, "signupDto validation error", validationErrors, appPkg.ErrBadRequest)
+		config.Config.Logger.Log(zerolog.InfoLevel, "signupDto validation error", validationErrors, appPkg.ErrBadRequest)
 		appPkg.SendErrorResponse(
 			w,
 			appPkg.ApiResponse{
@@ -45,15 +47,15 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 	// if phone number isn't verified, send sms
 	// return the user
 	switch *body.RegStage {
-	case pkg.RegStage1:
+	case utils.RegStage1:
 		// create user with email, account type and stage 1
 		// if user is a business, then also create the business
 		// then return the user
-	case pkg.RegStage2:
+	case utils.RegStage2:
 		// update the user phone number, and stage to 2
 		// send sms
 		// then return the user
-	case pkg.RegStage3:
+	case utils.RegStage3:
 		// update the user first name and last name and stage to 3
 		// hash password and save the user's auth data
 		// sign in the user (hash the token and save)

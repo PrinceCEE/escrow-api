@@ -11,12 +11,13 @@ import (
 func main() {
 	r := getRouter()
 
+	port := config.Config.Env.PORT
 	srv := http.Server{
-		Addr:    ":" + config.Cfg.Env.PORT,
+		Addr:    ":" + port,
 		Handler: r,
 	}
 
-	fmt.Printf("server running on port %s\n", config.Cfg.Env.PORT)
+	fmt.Printf("server running on port %s\n", port)
 	if err := srv.ListenAndServe(); err != nil {
 		log.Panic(err)
 	}

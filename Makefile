@@ -1,7 +1,7 @@
 include .env
 
-.PHONY: run/app/dev
-run/app/dev:
+.PHONY: run/api/dev
+run/api/dev:
 	@echo "starting the web server"
 	go run ./cmd/app -env=development -loglevel=debug
 

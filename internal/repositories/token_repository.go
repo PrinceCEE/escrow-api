@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/models"
-	"github.com/Bupher-Co/bupher-api/pkg"
+	"github.com/Bupher-Co/bupher-api/internal/models"
+	"github.com/Bupher-Co/bupher-api/pkg/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -58,7 +58,7 @@ func (repo *tokenRepository) Update(t *models.Token) error {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	query, err := pkg.GetUpdateQueryFromStruct(t, "tokens")
+	query, err := utils.GetUpdateQueryFromStruct(t, "tokens")
 	if err != nil {
 		return err
 	}

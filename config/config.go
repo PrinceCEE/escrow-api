@@ -1,10 +1,14 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"os"
+	"time"
 
+	"github.com/Bupher-Co/bupher-api/internal/repositories"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 )
@@ -14,16 +18,31 @@ type Logger struct {
 	level zerolog.Level
 }
 
-type Config struct {
-	DbManager   *DbManager
-	Env         *Env
-	RedisClient *redisClient
-	*Logger
+type config struct {
+	DB           *pgxpool.Pool
+	Repositories Repositories
+	Env          Env
+	RedisClient  *redisClient
+	Logger       Logger
 }
 
-var Cfg = newConfig()
+type Repositories struct {
+	UserRepository     repositories.UserRepository
+	BusinessRepository repositories.BusinessRepository
+	AuthRepository     repositories.AuthRepository
+	EventRepository    repositories.EventRepository
+	TokenRepository    repositories.TokenRepository
+}
 
-func newConfig() *Config {
+type Env struct {
+	PORT      string
+	DSN       string
+	REDIS_URL string
+}
+
+var Config = newConfig()
+
+func newConfig() config {
 	var environment, loglevel string
 
 	flag.StringVar(&environment, "env", "development", "The environment of the app(development/production)")
@@ -37,27 +56,47 @@ func newConfig() *Config {
 	}
 
 	level := getLoggerLevel(loglevel)
-	logger := &Logger{
+	logger := Logger{
 		l:     zerolog.New(os.Stderr).Level(level).With().Timestamp().Logger(),
 		level: level,
 	}
 
-	env := newEnv()
-	manager, err := newDbManager(env)
-	if err != nil {
-		logger.Log(zerolog.PanicLevel, "error connecting to the db", nil, err)
+	env := Env{
+		PORT:      os.Getenv("PORT"),
+		DSN:       os.Getenv("DSN"),
+		REDIS_URL: os.Getenv("REDIS_URL"),
 	}
 
-	rclient, err := NewRedisClient(*env)
+	parsedConfig, err := pgxpool.ParseConfig(env.DSN)
+	if err != nil {
+		logger.Log(zerolog.PanicLevel, "error parsing dsn", nil, err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	pool, err := pgxpool.NewWithConfig(ctx, parsedConfig)
+	if err != nil {
+		logger.Log(zerolog.PanicLevel, "error connecting the db", nil, err)
+	}
+
+	rclient, err := NewRedisClient(env)
 	if err != nil {
 		logger.Log(zerolog.PanicLevel, "error instantiating redis client", nil, err)
 	}
 
-	return &Config{
+	timeout := 10 * time.Second
+	return config{
+		DB:          pool,
 		Env:         env,
-		DbManager:   manager,
 		Logger:      logger,
 		RedisClient: rclient,
+		Repositories: Repositories{
+			AuthRepository:     repositories.NewAuthRepository(pool, timeout),
+			BusinessRepository: repositories.NewBusinessRepository(pool, timeout),
+			EventRepository:    repositories.NewEventRepository(pool, timeout),
+			TokenRepository:    repositories.NewTokenRepository(pool, timeout),
+			UserRepository:     repositories.NewUserRepository(pool, timeout),
+		},
 	}
 }
 
