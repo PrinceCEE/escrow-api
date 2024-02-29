@@ -70,7 +70,7 @@ func (repo *eventRepository) GetById(id string) (*models.Event, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	var e *models.Event
+	e := new(models.Event)
 	query := `
 		SELECT
 			id,

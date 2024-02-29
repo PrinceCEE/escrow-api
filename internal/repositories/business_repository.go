@@ -72,7 +72,7 @@ func (repo *businessRepository) GetById(id string, tx pgx.Tx) (*models.Business,
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	var b *models.Business
+	b := new(models.Business)
 	query := `
 		SELECT
 			id,

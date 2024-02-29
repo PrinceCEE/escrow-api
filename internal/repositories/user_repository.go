@@ -75,8 +75,7 @@ func (repo *userRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	var u *models.User
-
+	u := new(models.User)
 	query := fmt.Sprintf(`
 		SELECT
 			id,

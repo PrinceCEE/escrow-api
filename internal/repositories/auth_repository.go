@@ -72,7 +72,7 @@ func (repo *authRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	var a *models.Auth
+	a := new(models.Auth)
 	query := `
 		SELECT
 			id,

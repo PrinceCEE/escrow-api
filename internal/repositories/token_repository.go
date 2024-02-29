@@ -79,7 +79,7 @@ func (repo *tokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	var t *models.Token
+	t := new(models.Token)
 	query := `
 		SELECT
 			id,

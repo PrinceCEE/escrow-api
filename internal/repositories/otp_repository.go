@@ -72,7 +72,7 @@ func (repo *otpRepository) GetById(id string, tx pgx.Tx) (*models.Otp, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	var otp *models.Otp
+	otp := new(models.Otp)
 	query := `
 		SELECT
 			id,
