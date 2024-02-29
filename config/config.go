@@ -35,9 +35,11 @@ type Repositories struct {
 }
 
 type Env struct {
-	PORT      string
-	DSN       string
-	REDIS_URL string
+	PORT           string
+	DSN            string
+	REDIS_URL      string
+	EMAIL_USERNAME string
+	EMAIL_PASSWORD string
 }
 
 var Config = newConfig()
@@ -62,9 +64,11 @@ func newConfig() config {
 	}
 
 	env := Env{
-		PORT:      os.Getenv("PORT"),
-		DSN:       os.Getenv("DSN"),
-		REDIS_URL: os.Getenv("REDIS_URL"),
+		PORT:           os.Getenv("PORT"),
+		DSN:            os.Getenv("DSN"),
+		REDIS_URL:      os.Getenv("REDIS_URL"),
+		EMAIL_USERNAME: os.Getenv("EMAIL_USERNAME"),
+		EMAIL_PASSWORD: os.Getenv("EMAIL_PASSWORD"),
 	}
 
 	parsedConfig, err := pgxpool.ParseConfig(env.DSN)
