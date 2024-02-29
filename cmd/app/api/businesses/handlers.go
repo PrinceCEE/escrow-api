@@ -3,9 +3,9 @@ package businesses
 import (
 	"net/http"
 
-	"github.com/Bupher-Co/bupher-api/cmd/app/pkg"
+	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
 )
 
 func notImplemented(w http.ResponseWriter, r *http.Request) {
-	pkg.SendErrorResponse(w, pkg.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
 }

@@ -1,10 +1,11 @@
-package email
+package push
 
 import (
 	"net/smtp"
 
 	"github.com/Bupher-Co/bupher-api/config"
-	emailClient "github.com/jordan-wright/email"
+	"github.com/jordan-wright/email"
+	"github.com/rs/zerolog"
 )
 
 type Email struct {
@@ -15,11 +16,11 @@ type Email struct {
 	Html    string
 }
 
-func SendEmail(data *Email) error {
+func SendEmail(data *Email) {
 	username := config.Config.Env.EMAIL_USERNAME
 	password := config.Config.Env.EMAIL_PASSWORD
 
-	e := emailClient.NewEmail()
+	e := email.NewEmail()
 	if data.From != "" {
 		e.From = data.From
 	} else {
@@ -31,7 +32,7 @@ func SendEmail(data *Email) error {
 	e.Text = []byte(data.Text)
 	e.HTML = []byte(data.Html)
 
-	return e.Send(
+	err := e.Send(
 		"smtp.gmail.com:587",
 		smtp.PlainAuth(
 			"",
@@ -40,4 +41,8 @@ func SendEmail(data *Email) error {
 			"smtp.gmail.com",
 		),
 	)
+
+	if err != nil {
+		config.Config.Logger.Log(zerolog.InfoLevel, "error sending email", nil, err)
+	}
 }

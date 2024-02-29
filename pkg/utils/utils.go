@@ -3,6 +3,10 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type RegStage int
@@ -60,4 +64,22 @@ func GetUpdateQueryFromStruct(s any, tableName string) (string, error) {
 	query += fmt.Sprintf("\nWHERE id = %s AND version = %s\nRETURNING version", mapData["id"], mapData["version"])
 
 	return query, nil
+}
+
+func GenerateHash(str string) ([]byte, error) {
+	return bcrypt.GenerateFromPassword([]byte(str), bcrypt.DefaultCost)
+}
+
+func ComparePassword(pwd string, hash []byte) error {
+	return bcrypt.CompareHashAndPassword(hash, []byte(pwd))
+}
+
+func GenerateRandomNumber() string {
+	seed := time.Now().UnixNano()
+	source := rand.NewSource(seed)
+
+	r := rand.New(source)
+	v := r.Intn(10000)
+
+	return fmt.Sprintf("%04d", v)
 }

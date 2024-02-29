@@ -3,33 +3,33 @@ package transactions
 import (
 	"net/http"
 
-	"github.com/Bupher-Co/bupher-api/cmd/app/pkg"
+	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
 )
 
 func createTransaction(w http.ResponseWriter, r *http.Request) {
-	pkg.SendErrorResponse(w, pkg.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
 }
 
 func updateTransaction(w http.ResponseWriter, r *http.Request) {
-	pkg.SendErrorResponse(w, pkg.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
 }
 
 func acceptTransaction(w http.ResponseWriter, r *http.Request) {
-	pkg.SendErrorResponse(w, pkg.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
 }
 
 func rejectTransaction(w http.ResponseWriter, r *http.Request) {
-	pkg.SendErrorResponse(w, pkg.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
 }
 
 func makePayment(w http.ResponseWriter, r *http.Request) {
-	pkg.SendErrorResponse(w, pkg.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
 }
 
 func getTransaction(w http.ResponseWriter, r *http.Request) {
-	pkg.SendErrorResponse(w, pkg.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
 }
 
 func getTransactions(w http.ResponseWriter, r *http.Request) {
-	pkg.SendErrorResponse(w, pkg.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
 }

@@ -32,6 +32,7 @@ type Repositories struct {
 	AuthRepository     repositories.AuthRepository
 	EventRepository    repositories.EventRepository
 	TokenRepository    repositories.TokenRepository
+	OtpRepository      repositories.OtpRepository
 }
 
 type Env struct {
@@ -40,6 +41,16 @@ type Env struct {
 	REDIS_URL      string
 	EMAIL_USERNAME string
 	EMAIL_PASSWORD string
+	ENVIRONMENT    string
+	JWT_KEY        string
+}
+
+func (e *Env) IsDevelopment() bool {
+	return e.ENVIRONMENT == "development"
+}
+
+func (e *Env) IsProduction() bool {
+	return e.ENVIRONMENT == "production"
 }
 
 var Config = newConfig()
@@ -69,6 +80,8 @@ func newConfig() config {
 		REDIS_URL:      os.Getenv("REDIS_URL"),
 		EMAIL_USERNAME: os.Getenv("EMAIL_USERNAME"),
 		EMAIL_PASSWORD: os.Getenv("EMAIL_PASSWORD"),
+		ENVIRONMENT:    os.Getenv("ENVIRONMENT"),
+		JWT_KEY:        os.Getenv("JWT_KEY"),
 	}
 
 	parsedConfig, err := pgxpool.ParseConfig(env.DSN)
@@ -100,6 +113,7 @@ func newConfig() config {
 			EventRepository:    repositories.NewEventRepository(pool, timeout),
 			TokenRepository:    repositories.NewTokenRepository(pool, timeout),
 			UserRepository:     repositories.NewUserRepository(pool, timeout),
+			OtpRepository:      repositories.NewOtpRepository(pool, timeout),
 		},
 	}
 }

@@ -10,81 +10,81 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type AuthRepository interface {
-	Create(a *models.Auth, tx pgx.Tx) error
-	Update(a *models.Auth, tx pgx.Tx) error
-	GetById(id string, tx pgx.Tx) (*models.Auth, error)
+type OtpRepository interface {
+	Create(otp *models.Otp, tx pgx.Tx) error
+	Update(otp *models.Otp, tx pgx.Tx) error
+	GetById(id string, tx pgx.Tx) (*models.Otp, error)
 	Delete(id string, tx pgx.Tx) error
 	SoftDelete(id string, tx pgx.Tx) error
 }
 
-type authRepository struct {
+type otpRepository struct {
 	DB      *pgxpool.Pool
 	Timeout time.Duration
 }
 
-func NewAuthRepository(db *pgxpool.Pool, timeout time.Duration) *authRepository {
-	return &authRepository{DB: db, Timeout: timeout}
+func NewOtpRepository(db *pgxpool.Pool, timeout time.Duration) *otpRepository {
+	return &otpRepository{DB: db, Timeout: timeout}
 }
 
-func (repo *authRepository) Create(a *models.Auth, tx pgx.Tx) error {
+func (repo *otpRepository) Create(otp *models.Otp, tx pgx.Tx) error {
 	now := time.Now().UTC()
-	a.CreatedAt = now
-	a.UpdatedAt = now
+	otp.CreatedAt = now
+	otp.UpdatedAt = now
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
 	query := `
-		INSERT INTO auths (user_id, password, password_history, created_at, updated_at)
+		INSERT INTO otps (user_id, code, is_used, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, version
 	`
 
-	args := []any{a.UserID, a.Password, a.PasswordHistory, a.CreatedAt, a.UpdatedAt}
+	args := []any{otp.UserID, otp.Code, otp.IsUsed, otp.CreatedAt, otp.UpdatedAt}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(a.ID, a.Version)
+		return tx.QueryRow(ctx, query, args...).Scan(otp.ID, otp.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(a.ID, a.Version)
+	return repo.DB.QueryRow(ctx, query, args...).Scan(otp.ID, otp.Version)
 }
 
-func (repo *authRepository) Update(a *models.Auth, tx pgx.Tx) error {
-	a.UpdatedAt = time.Now().UTC()
+func (repo *otpRepository) Update(otp *models.Otp, tx pgx.Tx) error {
+	otp.UpdatedAt = time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	query, err := utils.GetUpdateQueryFromStruct(a, "auths")
+	query, err := utils.GetUpdateQueryFromStruct(otp, "otps")
 	if err != nil {
 		return err
 	}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query).Scan(a.Version)
+		return tx.QueryRow(ctx, query).Scan(otp.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query).Scan(a.Version)
+	return repo.DB.QueryRow(ctx, query).Scan(otp.Version)
 }
 
-func (repo *authRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) {
+func (repo *otpRepository) GetById(id string, tx pgx.Tx) (*models.Otp, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	var a *models.Auth
+	var otp *models.Otp
 	query := `
 		SELECT
 			id,
 			user_id,
-			password,
-			password_history,
+			code,
+			is_used,
 			created_at,
 			updated_at,
 			deleted_at,
 			version
 		FROM
-			auths
+			otps
 		WHERE id = $1
 	`
 
@@ -96,27 +96,27 @@ func (repo *authRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) 
 	}
 
 	err := row.Scan(
-		a.ID,
-		a.UserID,
-		a.Password,
-		a.PasswordHistory,
-		a.CreatedAt,
-		a.UpdatedAt,
-		a.DeletedAt,
-		a.Version,
+		otp.ID,
+		otp.UserID,
+		otp.Code,
+		otp.IsUsed,
+		otp.CreatedAt,
+		otp.UpdatedAt,
+		otp.DeletedAt,
+		otp.Version,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return a, nil
+	return otp, nil
 }
 
-func (repo *authRepository) Delete(id string, tx pgx.Tx) (err error) {
+func (repo *otpRepository) Delete(id string, tx pgx.Tx) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	query := `DELETE FROM auths WHERE id = $1`
+	query := `DELETE FROM otps WHERE id = $1`
 
 	if tx != nil {
 		_, err = tx.Exec(ctx, query)
@@ -127,7 +127,7 @@ func (repo *authRepository) Delete(id string, tx pgx.Tx) (err error) {
 	return
 }
 
-func (repo *authRepository) SoftDelete(id string, tx pgx.Tx) error {
+func (repo *otpRepository) SoftDelete(id string, tx pgx.Tx) error {
 	a, err := repo.GetById(id, tx)
 	if err != nil {
 		return err

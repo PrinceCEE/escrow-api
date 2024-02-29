@@ -14,7 +14,7 @@ import (
 	"github.com/Bupher-Co/bupher-api/cmd/app/api/transactions"
 	"github.com/Bupher-Co/bupher-api/cmd/app/api/users"
 	"github.com/Bupher-Co/bupher-api/cmd/app/api/wallets"
-	"github.com/Bupher-Co/bupher-api/cmd/app/pkg"
+	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
@@ -60,10 +60,10 @@ func getRouter() chi.Router {
 	r.Mount("/api/v1", apiRouter)
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		pkg.SendErrorResponse(w, pkg.ApiResponse{Message: fmt.Sprintf("%s %s not found", r.Method, r.URL.Path)}, http.StatusNotFound)
+		response.SendErrorResponse(w, response.ApiResponse{Message: fmt.Sprintf("%s %s not found", r.Method, r.URL.Path)}, http.StatusNotFound)
 	})
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		pkg.SendErrorResponse(w, pkg.ApiResponse{Message: fmt.Sprintf("%s %s not allowed", r.Method, r.URL.Path)}, http.StatusMethodNotAllowed)
+		response.SendErrorResponse(w, response.ApiResponse{Message: fmt.Sprintf("%s %s not allowed", r.Method, r.URL.Path)}, http.StatusMethodNotAllowed)
 	})
 
 	return r

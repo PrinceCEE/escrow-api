@@ -41,7 +41,7 @@ func (repo *businessRepository) Create(b *models.Business, tx pgx.Tx) error {
 		RETURNING id, version
 	`
 
-	args := []any{b.UserID, b.Name, b.Email, b.CreatedAt, b.CreatedAt}
+	args := []any{b.UserID, b.Name, b.Email, b.CreatedAt, b.UpdatedAt}
 
 	if tx != nil {
 		return tx.QueryRow(ctx, query, args...).Scan(b.ID, b.Version)
