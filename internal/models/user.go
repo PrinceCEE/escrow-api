@@ -1,17 +1,13 @@
 package models
 
-import (
-	"database/sql"
-)
-
 type User struct {
-	Email                 string         `json:"email,omitempty" db:"email"`
-	PhoneNumber           sql.NullString `json:"phone_number,omitempty" db:"phone_number"`
-	FirstName             sql.NullString `json:"first_name" db:"first_name"`
-	LastName              sql.NullString `json:"last_name" db:"last_name"`
-	IsPhoneNumberVerified bool           `json:"is_phone_number_verified" db:"is_phone_number_verified"`
-	IsEmailVerified       bool           `json:"is_email_verified" db:"is_email_verified"`
-	RegStage              int            `json:"reg_stage" db:"reg_stage"`
-	AccountType           string         `json:"account_type" db:"account_type"`
+	Email                 string     `json:"email,omitempty" db:"email"`
+	PhoneNumber           NullString `json:"phone_number,omitempty" db:"phone_number"`
+	FirstName             NullString `json:"first_name" db:"first_name"`
+	LastName              NullString `json:"last_name" db:"last_name"`
+	IsPhoneNumberVerified bool       `json:"is_phone_number_verified" db:"is_phone_number_verified"`
+	IsEmailVerified       bool       `json:"is_email_verified" db:"is_email_verified"`
+	RegStage              int        `json:"reg_stage" db:"reg_stage"`
+	AccountType           string     `json:"account_type" db:"account_type"`
 	ModelMixin
 }

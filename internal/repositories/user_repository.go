@@ -153,7 +153,7 @@ func (repo *UserRepository) SoftDelete(id string, tx pgx.Tx) error {
 	}
 
 	now := time.Now().UTC()
-	u.DeletedAt = sql.NullTime{Time: now}
+	u.DeletedAt = models.NullTime{NullTime: sql.NullTime{Time: now}}
 	u.UpdatedAt = now
 	return repo.Update(u, tx)
 }

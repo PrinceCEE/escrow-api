@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
 	"github.com/Bupher-Co/bupher-api/config"
@@ -62,10 +63,11 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		case int(utils.RegStage1):
 			if !user.IsEmailVerified {
 				otp := &models.Otp{
-					UserID:  user.ID,
-					Code:    utils.GenerateRandomNumber(),
-					IsUsed:  false,
-					OtpType: models.EmailOtpType,
+					UserID:    user.ID,
+					Code:      utils.GenerateRandomNumber(),
+					IsUsed:    false,
+					OtpType:   models.EmailOtpType,
+					ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
 				}
 
 				err = h.c.OtpRepository.Create(otp, nil)
@@ -102,10 +104,11 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		case int(utils.RegStage2):
 			if !user.IsPhoneNumberVerified {
 				otp := &models.Otp{
-					UserID:  user.ID,
-					Code:    utils.GenerateRandomNumber(),
-					IsUsed:  false,
-					OtpType: models.SmsOtpType,
+					UserID:    user.ID,
+					Code:      utils.GenerateRandomNumber(),
+					IsUsed:    false,
+					OtpType:   models.SmsOtpType,
+					ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
 				}
 
 				err = h.c.OtpRepository.Create(otp, nil)
@@ -180,10 +183,11 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		otp := &models.Otp{
-			UserID:  user.ID,
-			Code:    utils.GenerateRandomNumber(),
-			IsUsed:  false,
-			OtpType: models.EmailOtpType,
+			UserID:    user.ID,
+			Code:      utils.GenerateRandomNumber(),
+			IsUsed:    false,
+			OtpType:   models.EmailOtpType,
+			ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
 		}
 
 		err = h.c.OtpRepository.Create(otp, tx)
@@ -217,7 +221,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			resp.Data = user
 		}
 	case utils.RegStage2:
-		user.PhoneNumber = sql.NullString{String: *body.PhoneNumber}
+		user.PhoneNumber = models.NullString{NullString: sql.NullString{String: *body.PhoneNumber}}
 		user.RegStage = int(*body.RegStage)
 
 		err = h.c.UserRepository.Update(user, tx)
@@ -228,10 +232,11 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		otp := &models.Otp{
-			UserID:  user.ID,
-			Code:    utils.GenerateRandomNumber(),
-			IsUsed:  false,
-			OtpType: models.SmsOtpType,
+			UserID:    user.ID,
+			Code:      utils.GenerateRandomNumber(),
+			IsUsed:    false,
+			OtpType:   models.SmsOtpType,
+			ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
 		}
 		err = h.c.OtpRepository.Create(otp, tx)
 		if err != nil {
@@ -257,8 +262,8 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			resp.Data = user
 		}
 	case utils.RegStage3:
-		user.FirstName = sql.NullString{String: *body.FirstName}
-		user.LastName = sql.NullString{String: *body.LastName}
+		user.FirstName = models.NullString{NullString: sql.NullString{String: *body.FirstName}}
+		user.LastName = models.NullString{NullString: sql.NullString{String: *body.LastName}}
 		user.RegStage = int(*body.RegStage)
 
 		err = h.c.UserRepository.Update(user, tx)

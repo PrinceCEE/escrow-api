@@ -29,12 +29,20 @@ func (repo *OtpRepository) Create(otp *models.Otp, tx pgx.Tx) error {
 	defer cancel()
 
 	query := `
-		INSERT INTO otps (user_id, code, is_used, otp_type, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO otps (user_id, code, is_used, otp_type, expires_in, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, version
 	`
 
-	args := []any{otp.UserID, otp.Code, otp.IsUsed, otp.OtpType, otp.CreatedAt, otp.UpdatedAt}
+	args := []any{
+		otp.UserID,
+		otp.Code,
+		otp.IsUsed,
+		otp.OtpType,
+		otp.ExpiresIn,
+		otp.CreatedAt,
+		otp.UpdatedAt,
+	}
 
 	if tx != nil {
 		return tx.QueryRow(ctx, query, args...).Scan(&otp.ID, &otp.Version)
@@ -72,6 +80,8 @@ func (repo *OtpRepository) GetById(id string, tx pgx.Tx) (*models.Otp, error) {
 			user_id,
 			code,
 			is_used,
+			otp_type,
+			expires_in,
 			created_at,
 			updated_at,
 			deleted_at,
@@ -93,6 +103,8 @@ func (repo *OtpRepository) GetById(id string, tx pgx.Tx) (*models.Otp, error) {
 		&otp.UserID,
 		&otp.Code,
 		&otp.IsUsed,
+		&otp.OtpType,
+		&otp.ExpiresIn,
 		&otp.CreatedAt,
 		&otp.UpdatedAt,
 		&otp.DeletedAt,
@@ -128,7 +140,7 @@ func (repo *OtpRepository) SoftDelete(id string, tx pgx.Tx) error {
 
 	now := time.Now().UTC()
 	a.UpdatedAt = now
-	a.DeletedAt = sql.NullTime{Time: now}
+	a.DeletedAt = models.NullTime{NullTime: sql.NullTime{Time: now}}
 
 	return repo.Update(a, tx)
 }
