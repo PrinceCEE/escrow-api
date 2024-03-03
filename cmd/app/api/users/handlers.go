@@ -4,20 +4,29 @@ import (
 	"net/http"
 
 	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
+	"github.com/Bupher-Co/bupher-api/config"
 )
 
-func getMe(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+type userHandler struct {
+	c *config.Config
 }
 
-func getUser(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *userHandler) getMe(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 
-func updateAccount(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *userHandler) getUser(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 
-func changePassword(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *userHandler) updateAccount(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
+}
+
+func (h *userHandler) changePassword(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }

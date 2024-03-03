@@ -4,32 +4,44 @@ import (
 	"net/http"
 
 	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
+	"github.com/Bupher-Co/bupher-api/config"
 )
 
-func createTransaction(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+type transactionHandler struct {
+	c *config.Config
 }
 
-func updateTransaction(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *transactionHandler) createTransaction(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 
-func acceptTransaction(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *transactionHandler) updateTransaction(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 
-func rejectTransaction(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *transactionHandler) acceptTransaction(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 
-func makePayment(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *transactionHandler) rejectTransaction(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 
-func getTransaction(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *transactionHandler) makePayment(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 
-func getTransactions(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *transactionHandler) getTransaction(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
+}
+
+func (h *transactionHandler) getTransactions(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }

@@ -4,16 +4,24 @@ import (
 	"net/http"
 
 	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
+	"github.com/Bupher-Co/bupher-api/config"
 )
 
-func getNotifications(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+type notificationHandler struct {
+	c *config.Config
 }
 
-func getNotification(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *notificationHandler) getNotifications(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 
-func markAsRead(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *notificationHandler) getNotification(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
+}
+
+func (h *notificationHandler) markAsRead(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }

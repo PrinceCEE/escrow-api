@@ -1,19 +1,21 @@
 package transactions
 
 import (
+	"github.com/Bupher-Co/bupher-api/config"
 	"github.com/go-chi/chi/v5"
 )
 
-func TransactionsRouter() chi.Router {
+func TransactionsRouter(c *config.Config) chi.Router {
+	h := transactionHandler{c}
 	r := chi.NewRouter()
 
-	r.Post("/create", createTransaction)
-	r.Put("/{transction_id}", updateTransaction)
-	r.Post("/{transaction_id}/accpet", acceptTransaction)
-	r.Post("/{transaction_id}/reject", rejectTransaction)
-	r.Get("/{transaction_id}", getTransaction)
-	r.Get("/", getTransactions)
-	r.Post("/pay", makePayment)
+	r.Post("/create", h.createTransaction)
+	r.Put("/{transction_id}", h.updateTransaction)
+	r.Post("/{transaction_id}/accpet", h.acceptTransaction)
+	r.Post("/{transaction_id}/reject", h.rejectTransaction)
+	r.Get("/{transaction_id}", h.getTransaction)
+	r.Get("/", h.getTransactions)
+	r.Post("/pay", h.makePayment)
 
 	return r
 }

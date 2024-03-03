@@ -2,16 +2,26 @@ package reports
 
 import (
 	"net/http"
+
+	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
+	"github.com/Bupher-Co/bupher-api/config"
 )
 
-func reportTransaction(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("not yet implemented"))
+type reportHandler struct {
+	c *config.Config
 }
 
-func getReport(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("not yet implemented"))
+func (h *reportHandler) reportTransaction(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 
-func getReports(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("not yet implemented"))
+func (h *reportHandler) getReport(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
+}
+
+func (h *reportHandler) getReports(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }

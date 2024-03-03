@@ -25,8 +25,12 @@ const (
 	RegStage3Msg       = "sign up successful"
 )
 
-func signUp(w http.ResponseWriter, r *http.Request) {
-	var body *signUpDto
+type authHandler struct {
+	c *config.Config
+}
+
+func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
+	body := new(signUpDto)
 	resp := response.ApiResponse{}
 
 	err := json.ReadJSON(r, body)
@@ -44,21 +48,11 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user *models.User
-	user, err = config.Config.Repositories.UserRepository.GetByEmail(*body.Email, nil)
-	if err != nil {
-		var statusCode int
-
-		switch {
-		case errors.Is(err, pgx.ErrNoRows):
-			statusCode = http.StatusNotFound
-		default:
-			statusCode = http.StatusBadRequest
-		}
-
-		config.Config.Logger.Log(zerolog.InfoLevel, "error fetching user", nil, err)
+	user := new(models.User)
+	user, err = h.c.UserRepository.GetByEmail(*body.Email, nil)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		resp.Message = response.ErrNotFound.Error()
-		response.SendErrorResponse(w, resp, statusCode)
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
 		return
 	}
 
@@ -73,22 +67,25 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 					OtpType: models.EmailOtpType,
 				}
 
-				err = config.Config.Repositories.OtpRepository.Create(otp, nil)
+				err = h.c.OtpRepository.Create(otp, nil)
 				if err != nil {
 					resp.Message = err.Error()
 					response.SendErrorResponse(w, resp, http.StatusInternalServerError)
 					return
 				}
 
-				push.SendEmail(&push.Email{
+				err = push.SendEmail(&push.Email{
 					To:      []string{*user.Email},
 					Subject: VerifyEmailSubject,
 					Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
 					Html:    fmt.Sprintf("<p>Use code %s to verify your email</p>", otp.Code),
 				})
+				if err != nil {
+					h.c.Logger.Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
+				}
 
 				resp.Message = RegStage1Msg
-				if config.Config.Env.IsDevelopment() {
+				if h.c.Env.IsDevelopment() {
 					resp.Data = map[string]string{
 						"code": otp.Code,
 					}
@@ -107,7 +104,7 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 					OtpType: models.SmsOtpType,
 				}
 
-				err = config.Config.Repositories.OtpRepository.Create(otp, nil)
+				err = h.c.OtpRepository.Create(otp, nil)
 				if err != nil {
 					resp.Message = err.Error()
 					response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -120,7 +117,7 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 				})
 
 				resp.Message = RegStage2Msg
-				if config.Config.Env.IsDevelopment() {
+				if h.c.Env.IsDevelopment() {
 					resp.Data = map[string]string{
 						"code": otp.Code,
 					}
@@ -137,7 +134,7 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tx, err := config.Config.DB.Begin(context.Background())
+	tx, err := h.c.DB.Begin(context.Background())
 	defer tx.Rollback(context.Background())
 
 	if err != nil {
@@ -154,7 +151,7 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 			RegStage:    int(*body.RegStage),
 		}
 
-		err := config.Config.Repositories.UserRepository.Create(user, tx)
+		err := h.c.UserRepository.Create(user, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -168,7 +165,7 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 				Email:  *body.Email,
 			}
 
-			err = config.Config.Repositories.BusinessRepository.Create(business, tx)
+			err = h.c.BusinessRepository.Create(business, tx)
 			if err != nil {
 				resp.Message = err.Error()
 				response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -182,23 +179,26 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 			IsUsed:  false,
 			OtpType: models.EmailOtpType,
 		}
-		err = config.Config.Repositories.OtpRepository.Create(otp, tx)
+		err = h.c.OtpRepository.Create(otp, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
 			return
 		}
 
-		push.SendEmail(&push.Email{
+		err = push.SendEmail(&push.Email{
 			To:      []string{*user.Email},
 			Subject: VerifyEmailSubject,
 			Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
 			Html:    fmt.Sprintf("<p>Use code %s to verify your email</p>", otp.Code),
 		})
+		if err != nil {
+			h.c.Logger.Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
+		}
 
 		resp.Message = RegStage1Msg
 
-		if config.Config.Env.IsDevelopment() {
+		if h.c.Env.IsDevelopment() {
 			resp.Data = map[string]any{
 				"code": otp.Code,
 				"user": user,
@@ -210,7 +210,7 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 		user.PhoneNumber = body.PhoneNumber
 		user.RegStage = int(*body.RegStage)
 
-		err = config.Config.Repositories.UserRepository.Update(user, tx)
+		err = h.c.UserRepository.Update(user, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -223,7 +223,7 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 			IsUsed:  false,
 			OtpType: models.SmsOtpType,
 		}
-		err = config.Config.Repositories.OtpRepository.Create(otp, tx)
+		err = h.c.OtpRepository.Create(otp, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -236,7 +236,7 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 		})
 
 		resp.Message = RegStage2Msg
-		if config.Config.Env.IsDevelopment() {
+		if h.c.Env.IsDevelopment() {
 			resp.Data = map[string]any{
 				"code": otp.Code,
 				"user": user,
@@ -249,7 +249,7 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 		user.LastName = *body.LastName
 		user.RegStage = int(*body.RegStage)
 
-		err = config.Config.Repositories.UserRepository.Update(user, tx)
+		err = h.c.UserRepository.Update(user, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -268,7 +268,7 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 			Password: hashPwd,
 		}
 
-		err = config.Config.Repositories.AuthRepository.Create(auth, tx)
+		err = h.c.AuthRepository.Create(auth, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -276,7 +276,7 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		accessTokenStr, err := jwt.GenerateToken(&jwt.TokenClaims{
-			UserID:    user.ID,
+			UserID:    user.ID.String(),
 			Email:     *user.Email,
 			TokenType: string(models.AccessToken),
 		})
@@ -287,7 +287,7 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		refreshTokenStr, err := jwt.GenerateToken(&jwt.TokenClaims{
-			UserID:    user.ID,
+			UserID:    user.ID.String(),
 			Email:     *user.Email,
 			TokenType: string(models.RefreshToken),
 		})
@@ -324,14 +324,14 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 			TokenType: models.RefreshToken,
 		}
 
-		err = config.Config.Repositories.TokenRepository.Create(accessToken, tx)
+		err = h.c.TokenRepository.Create(accessToken, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
 			return
 		}
 
-		err = config.Config.Repositories.TokenRepository.Create(refreshToken, tx)
+		err = h.c.TokenRepository.Create(refreshToken, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -356,18 +356,22 @@ func signUp(w http.ResponseWriter, r *http.Request) {
 	response.SendResponse(w, resp)
 }
 
-func signIn(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *authHandler) signIn(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 
-func verifyCode(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 
-func resetPassword(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *authHandler) resetPassword(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 
-func changePassword(w http.ResponseWriter, r *http.Request) {
-	response.SendErrorResponse(w, response.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+func (h *authHandler) changePassword(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
