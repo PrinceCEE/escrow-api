@@ -3,6 +3,7 @@ include .env
 .PHONY: api/dev
 api/dev:
 	@echo "starting the web server"
+	@clear
 	go run ./cmd/app -env=development -loglevel=debug
 
 .PHONY: migration/create
