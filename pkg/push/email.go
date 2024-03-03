@@ -1,6 +1,7 @@
 package push
 
 import (
+	"fmt"
 	"net/smtp"
 	"os"
 
@@ -22,12 +23,15 @@ type Email struct {
 func SendEmail(data *Email) error {
 	username := os.Getenv("EMAIL_USERNAME")
 	password := os.Getenv("EMAIL_PASSWORD")
+	from := os.Getenv("EMAIL_FROM")
+	port := os.Getenv("EMAIL_PORT")
+	host := os.Getenv("EMAIL_HOST")
 
 	e := email.NewEmail()
 	if data.From != "" {
 		e.From = data.From
 	} else {
-		e.From = username
+		e.From = from
 	}
 
 	e.To = data.To
@@ -36,12 +40,12 @@ func SendEmail(data *Email) error {
 	e.HTML = []byte(data.Html)
 
 	err := e.Send(
-		"smtp.gmail.com:587",
+		fmt.Sprintf("%s:%s", host, port),
 		smtp.PlainAuth(
 			"",
 			username,
 			password,
-			"smtp.gmail.com",
+			host,
 		),
 	)
 

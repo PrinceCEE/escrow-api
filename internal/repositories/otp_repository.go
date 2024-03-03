@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
@@ -28,12 +29,12 @@ func (repo *OtpRepository) Create(otp *models.Otp, tx pgx.Tx) error {
 	defer cancel()
 
 	query := `
-		INSERT INTO otps (user_id, code, is_used, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO otps (user_id, code, is_used, otp_type, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, version
 	`
 
-	args := []any{otp.UserID, otp.Code, otp.IsUsed, otp.CreatedAt, otp.UpdatedAt}
+	args := []any{otp.UserID, otp.Code, otp.IsUsed, otp.OtpType, otp.CreatedAt, otp.UpdatedAt}
 
 	if tx != nil {
 		return tx.QueryRow(ctx, query, args...).Scan(&otp.ID, &otp.Version)
@@ -127,7 +128,7 @@ func (repo *OtpRepository) SoftDelete(id string, tx pgx.Tx) error {
 
 	now := time.Now().UTC()
 	a.UpdatedAt = now
-	a.DeletedAt = now
+	a.DeletedAt = sql.NullTime{Time: now}
 
 	return repo.Update(a, tx)
 }

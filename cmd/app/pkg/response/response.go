@@ -37,7 +37,8 @@ type ApiResponse struct {
 
 func SendResponse(w http.ResponseWriter, b ApiResponse, headers ...map[string]string) {
 	if b.Success == nil {
-		*b.Success = true
+		s := true
+		b.Success = &s
 	}
 
 	if b.StatusCode == nil {

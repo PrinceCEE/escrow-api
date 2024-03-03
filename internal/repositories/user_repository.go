@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -152,7 +153,7 @@ func (repo *UserRepository) SoftDelete(id string, tx pgx.Tx) error {
 	}
 
 	now := time.Now().UTC()
-	u.DeletedAt = now
+	u.DeletedAt = sql.NullTime{Time: now}
 	u.UpdatedAt = now
 	return repo.Update(u, tx)
 }

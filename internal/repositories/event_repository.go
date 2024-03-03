@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
@@ -135,7 +136,7 @@ func (repo *EventRepository) SoftDelete(id string, tx pgx.Tx) error {
 
 	now := time.Now().UTC()
 	e.UpdatedAt = now
-	e.DeletedAt = now
+	e.DeletedAt = sql.NullTime{Time: now}
 
 	return repo.Update(e, tx)
 }

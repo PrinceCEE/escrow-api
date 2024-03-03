@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"reflect"
 	"time"
 
+	"github.com/Bupher-Co/bupher-api/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -49,6 +51,9 @@ func GetUpdateQueryFromStruct(s any, tableName string) (string, error) {
 		return "", err
 	}
 
+	t := reflect.TypeOf(s)
+	userType := reflect.TypeOf(&models.User{})
+
 	query := fmt.Sprintf("UPDATE %s\nSET ", tableName)
 	for k, v := range mapData {
 		if k == "id" {
@@ -57,6 +62,12 @@ func GetUpdateQueryFromStruct(s any, tableName string) (string, error) {
 
 		if k == "version" {
 			query += "version = version + 1, "
+		}
+
+		if t == userType {
+			if (k == "email" && v == "") || (k == "phone_number" && v == "") {
+				continue
+			}
 		}
 
 		query += fmt.Sprintf("%s = %s, ", k, v)
@@ -82,4 +93,10 @@ func GenerateRandomNumber() string {
 	v := r.Intn(10000)
 
 	return fmt.Sprintf("%04d", v)
+}
+
+func Background(fn func()) {
+	go func() {
+		fn()
+	}()
 }

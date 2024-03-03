@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -51,7 +52,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 	user := new(models.User)
 	user, err = h.c.UserRepository.GetByEmail(*body.Email, nil)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		resp.Message = response.ErrNotFound.Error()
+		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
 		return
 	}
@@ -74,15 +75,18 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				err = push.SendEmail(&push.Email{
-					To:      []string{*user.Email},
-					Subject: VerifyEmailSubject,
-					Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
-					Html:    fmt.Sprintf("<p>Use code %s to verify your email</p>", otp.Code),
+				utils.Background(func() {
+					err = push.SendEmail(&push.Email{
+						To:      []string{user.Email},
+						Subject: VerifyEmailSubject,
+						Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
+						Html:    fmt.Sprintf("<p>Use code %s to verify your email</p>", otp.Code),
+					})
+
+					if err != nil {
+						h.c.Logger.Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
+					}
 				})
-				if err != nil {
-					h.c.Logger.Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
-				}
 
 				resp.Message = RegStage1Msg
 				if h.c.Env.IsDevelopment() {
@@ -111,9 +115,11 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				push.SendSMS(&push.Sms{
-					Phone:   *user.PhoneNumber,
-					Message: fmt.Sprintf("Use code %s to verify your phone number", otp.Code),
+				utils.Background(func() {
+					push.SendSMS(&push.Sms{
+						Phone:   user.PhoneNumber.String,
+						Message: fmt.Sprintf("Use code %s to verify your phone number", otp.Code),
+					})
 				})
 
 				resp.Message = RegStage2Msg
@@ -146,14 +152,12 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 	switch *body.RegStage {
 	case utils.RegStage1:
 		user = &models.User{
-			Email:       body.Email,
+			Email:       *body.Email,
 			AccountType: *body.AccountType,
 			RegStage:    int(*body.RegStage),
 		}
 
 		err := h.c.UserRepository.Create(user, tx)
-		fmt.Println(user.Version)
-		fmt.Println(user.ID.String())
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -181,6 +185,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			IsUsed:  false,
 			OtpType: models.EmailOtpType,
 		}
+
 		err = h.c.OtpRepository.Create(otp, tx)
 		if err != nil {
 			resp.Message = err.Error()
@@ -188,15 +193,18 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = push.SendEmail(&push.Email{
-			To:      []string{*user.Email},
-			Subject: VerifyEmailSubject,
-			Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
-			Html:    fmt.Sprintf("<p>Use code %s to verify your email</p>", otp.Code),
+		utils.Background(func() {
+			err = push.SendEmail(&push.Email{
+				To:      []string{user.Email},
+				Subject: VerifyEmailSubject,
+				Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
+				Html:    fmt.Sprintf("<p>Use code %s to verify your email</p>", otp.Code),
+			})
+
+			if err != nil {
+				h.c.Logger.Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
+			}
 		})
-		if err != nil {
-			h.c.Logger.Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
-		}
 
 		resp.Message = RegStage1Msg
 
@@ -209,7 +217,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			resp.Data = user
 		}
 	case utils.RegStage2:
-		user.PhoneNumber = body.PhoneNumber
+		user.PhoneNumber = sql.NullString{String: *body.PhoneNumber}
 		user.RegStage = int(*body.RegStage)
 
 		err = h.c.UserRepository.Update(user, tx)
@@ -232,9 +240,11 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		push.SendSMS(&push.Sms{
-			Phone:   *user.PhoneNumber,
-			Message: fmt.Sprintf("Use code %s to verify your phone number", otp.Code),
+		utils.Background(func() {
+			push.SendSMS(&push.Sms{
+				Phone:   user.PhoneNumber.String,
+				Message: fmt.Sprintf("Use code %s to verify your phone number", otp.Code),
+			})
 		})
 
 		resp.Message = RegStage2Msg
@@ -247,8 +257,8 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			resp.Data = user
 		}
 	case utils.RegStage3:
-		user.FirstName = *body.FirstName
-		user.LastName = *body.LastName
+		user.FirstName = sql.NullString{String: *body.FirstName}
+		user.LastName = sql.NullString{String: *body.LastName}
 		user.RegStage = int(*body.RegStage)
 
 		err = h.c.UserRepository.Update(user, tx)
@@ -279,7 +289,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 
 		accessTokenStr, err := jwt.GenerateToken(&jwt.TokenClaims{
 			UserID:    user.ID.String(),
-			Email:     *user.Email,
+			Email:     user.Email,
 			TokenType: string(models.AccessToken),
 		})
 		if err != nil {
@@ -290,7 +300,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 
 		refreshTokenStr, err := jwt.GenerateToken(&jwt.TokenClaims{
 			UserID:    user.ID.String(),
-			Email:     *user.Email,
+			Email:     user.Email,
 			TokenType: string(models.RefreshToken),
 		})
 		if err != nil {

@@ -31,6 +31,9 @@ type Env struct {
 	REDIS_URL      string
 	EMAIL_USERNAME string
 	EMAIL_PASSWORD string
+	EMAIL_FROM     string
+	EMAIL_HOST     string
+	EMAIL_PORT     string
 	ENVIRONMENT    string
 	JWT_KEY        string
 }
@@ -68,6 +71,9 @@ func NewConfig() *Config {
 		REDIS_URL:      os.Getenv("REDIS_URL"),
 		EMAIL_USERNAME: os.Getenv("EMAIL_USERNAME"),
 		EMAIL_PASSWORD: os.Getenv("EMAIL_PASSWORD"),
+		EMAIL_FROM:     os.Getenv("EMAIL_FROM"),
+		EMAIL_HOST:     os.Getenv("EMAIL_HOST"),
+		EMAIL_PORT:     os.Getenv("EMAIL_PORT"),
 		ENVIRONMENT:    os.Getenv("ENVIRONMENT"),
 		JWT_KEY:        os.Getenv("JWT_KEY"),
 	}
