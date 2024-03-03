@@ -1,9 +1,9 @@
 package jwt
 
 import (
+	"os"
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/config"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -15,7 +15,7 @@ type TokenClaims struct {
 }
 
 func GenerateToken(t *TokenClaims) (string, error) {
-	key := config.Config.Env.JWT_KEY
+	key := os.Getenv("JWT_KEY")
 
 	t.IssuedAt = jwt.NewNumericDate(time.Now())
 	t.Issuer = "bupherco"
@@ -32,7 +32,7 @@ func GenerateToken(t *TokenClaims) (string, error) {
 }
 
 func VerifyToken(tokenStr string) (*TokenClaims, error) {
-	key := config.Config.Env.JWT_KEY
+	key := os.Getenv("JWT_KEY")
 
 	token, err := jwt.ParseWithClaims(tokenStr, &TokenClaims{}, func(t *jwt.Token) (interface{}, error) {
 		return []byte(key), nil
