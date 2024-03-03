@@ -1,7 +1,6 @@
 package config
 
 import (
-	"context"
 	"errors"
 	"flag"
 	"os"
@@ -18,21 +17,12 @@ type Logger struct {
 	level zerolog.Level
 }
 
-type config struct {
-	DB           *pgxpool.Pool
-	Repositories Repositories
-	Env          Env
-	RedisClient  *redisClient
-	Logger       Logger
-}
-
-type Repositories struct {
-	UserRepository     repositories.UserRepository
-	BusinessRepository repositories.BusinessRepository
-	AuthRepository     repositories.AuthRepository
-	EventRepository    repositories.EventRepository
-	TokenRepository    repositories.TokenRepository
-	OtpRepository      repositories.OtpRepository
+type Config struct {
+	Repositories
+	DB          *pgxpool.Pool
+	Env         Env
+	RedisClient *redisClient
+	Logger      Logger
 }
 
 type Env struct {
@@ -53,9 +43,7 @@ func (e *Env) IsProduction() bool {
 	return e.ENVIRONMENT == "production"
 }
 
-var Config = newConfig()
-
-func newConfig() config {
+func NewConfig() *Config {
 	var environment, loglevel string
 
 	flag.StringVar(&environment, "env", "development", "The environment of the app(development/production)")
@@ -84,36 +72,29 @@ func newConfig() config {
 		JWT_KEY:        os.Getenv("JWT_KEY"),
 	}
 
-	parsedConfig, err := pgxpool.ParseConfig(env.DSN)
+	dbpool, err := configureDB(env.DSN)
 	if err != nil {
-		logger.Log(zerolog.PanicLevel, "error parsing dsn", nil, err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	pool, err := pgxpool.NewWithConfig(ctx, parsedConfig)
-	if err != nil {
-		logger.Log(zerolog.PanicLevel, "error connecting the db", nil, err)
+		logger.Log(zerolog.PanicLevel, "error connecting to the db", nil, err)
 	}
 
-	rclient, err := NewRedisClient(env)
+	rclient, err := newRedisClient(env)
 	if err != nil {
 		logger.Log(zerolog.PanicLevel, "error instantiating redis client", nil, err)
 	}
 
 	timeout := 10 * time.Second
-	return config{
-		DB:          pool,
+	return &Config{
+		DB:          dbpool,
 		Env:         env,
 		Logger:      logger,
 		RedisClient: rclient,
 		Repositories: Repositories{
-			AuthRepository:     repositories.NewAuthRepository(pool, timeout),
-			BusinessRepository: repositories.NewBusinessRepository(pool, timeout),
-			EventRepository:    repositories.NewEventRepository(pool, timeout),
-			TokenRepository:    repositories.NewTokenRepository(pool, timeout),
-			UserRepository:     repositories.NewUserRepository(pool, timeout),
-			OtpRepository:      repositories.NewOtpRepository(pool, timeout),
+			AuthRepository:     repositories.NewAuthRepository(dbpool, timeout),
+			BusinessRepository: repositories.NewBusinessRepository(dbpool, timeout),
+			EventRepository:    repositories.NewEventRepository(dbpool, timeout),
+			TokenRepository:    repositories.NewTokenRepository(dbpool, timeout),
+			UserRepository:     repositories.NewUserRepository(dbpool, timeout),
+			OtpRepository:      repositories.NewOtpRepository(dbpool, timeout),
 		},
 	}
 }

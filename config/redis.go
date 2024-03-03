@@ -11,7 +11,7 @@ type redisClient struct {
 	DB *redis.Client
 }
 
-func NewRedisClient(env Env) (*redisClient, error) {
+func newRedisClient(env Env) (*redisClient, error) {
 	opts, err := redis.ParseURL(env.REDIS_URL)
 	if err != nil {
 		return nil, err
