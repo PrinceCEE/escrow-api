@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/gofrs/uuid"
+)
 
 type PasswordHistory struct {
 	Password  []byte    `json:"password"`
@@ -8,7 +12,7 @@ type PasswordHistory struct {
 }
 
 type Auth struct {
-	UserID          string            `json:"user_id"`
+	UserID          uuid.UUID         `json:"user_id"`
 	Password        []byte            `json:"password"`
 	PasswordHistory []PasswordHistory `json:"password_history"`
 	ModelMixin
