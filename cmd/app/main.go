@@ -9,15 +9,15 @@ import (
 )
 
 func main() {
-	r := getRouter()
+	c := config.NewConfig()
+	r := getRouter(c)
 
-	port := config.Config.Env.PORT
 	srv := http.Server{
-		Addr:    ":" + port,
+		Addr:    ":" + c.Env.PORT,
 		Handler: r,
 	}
 
-	fmt.Printf("server running on port %s\n", port)
+	fmt.Printf("server running on port %s\n", c.Env.PORT)
 	if err := srv.ListenAndServe(); err != nil {
 		log.Panic(err)
 	}
