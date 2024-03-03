@@ -10,24 +10,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type AuthRepository interface {
-	Create(a *models.Auth, tx pgx.Tx) error
-	Update(a *models.Auth, tx pgx.Tx) error
-	GetById(id string, tx pgx.Tx) (*models.Auth, error)
-	Delete(id string, tx pgx.Tx) error
-	SoftDelete(id string, tx pgx.Tx) error
-}
-
-type authRepository struct {
+type AuthRepository struct {
 	DB      *pgxpool.Pool
 	Timeout time.Duration
 }
 
-func NewAuthRepository(db *pgxpool.Pool, timeout time.Duration) *authRepository {
-	return &authRepository{DB: db, Timeout: timeout}
+func NewAuthRepository(db *pgxpool.Pool, timeout time.Duration) *AuthRepository {
+	return &AuthRepository{DB: db, Timeout: timeout}
 }
 
-func (repo *authRepository) Create(a *models.Auth, tx pgx.Tx) error {
+func (repo *AuthRepository) Create(a *models.Auth, tx pgx.Tx) error {
 	now := time.Now().UTC()
 	a.CreatedAt = now
 	a.UpdatedAt = now
@@ -44,13 +36,13 @@ func (repo *authRepository) Create(a *models.Auth, tx pgx.Tx) error {
 	args := []any{a.UserID, a.Password, a.PasswordHistory, a.CreatedAt, a.UpdatedAt}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(a.ID, a.Version)
+		return tx.QueryRow(ctx, query, args...).Scan(&a.ID, &a.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(a.ID, a.Version)
+	return repo.DB.QueryRow(ctx, query, args...).Scan(&a.ID, &a.Version)
 }
 
-func (repo *authRepository) Update(a *models.Auth, tx pgx.Tx) error {
+func (repo *AuthRepository) Update(a *models.Auth, tx pgx.Tx) error {
 	a.UpdatedAt = time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
@@ -62,13 +54,13 @@ func (repo *authRepository) Update(a *models.Auth, tx pgx.Tx) error {
 	}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query).Scan(a.Version)
+		return tx.QueryRow(ctx, query).Scan(&a.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query).Scan(a.Version)
+	return repo.DB.QueryRow(ctx, query).Scan(&a.Version)
 }
 
-func (repo *authRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) {
+func (repo *AuthRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -96,14 +88,14 @@ func (repo *authRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) 
 	}
 
 	err := row.Scan(
-		a.ID,
-		a.UserID,
-		a.Password,
-		a.PasswordHistory,
-		a.CreatedAt,
-		a.UpdatedAt,
-		a.DeletedAt,
-		a.Version,
+		&a.ID,
+		&a.UserID,
+		&a.Password,
+		&a.PasswordHistory,
+		&a.CreatedAt,
+		&a.UpdatedAt,
+		&a.DeletedAt,
+		&a.Version,
 	)
 	if err != nil {
 		return nil, err
@@ -112,7 +104,7 @@ func (repo *authRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) 
 	return a, nil
 }
 
-func (repo *authRepository) Delete(id string, tx pgx.Tx) (err error) {
+func (repo *AuthRepository) Delete(id string, tx pgx.Tx) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -127,7 +119,7 @@ func (repo *authRepository) Delete(id string, tx pgx.Tx) (err error) {
 	return
 }
 
-func (repo *authRepository) SoftDelete(id string, tx pgx.Tx) error {
+func (repo *AuthRepository) SoftDelete(id string, tx pgx.Tx) error {
 	a, err := repo.GetById(id, tx)
 	if err != nil {
 		return err

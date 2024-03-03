@@ -10,24 +10,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type TokenRepository interface {
-	Create(t *models.Token, tx pgx.Tx) error
-	Update(t *models.Token, tx pgx.Tx) error
-	GetById(id string, tx pgx.Tx) (*models.Token, error)
-	Delete(id string, tx pgx.Tx) error
-	SoftDelete(id string, tx pgx.Tx) error
-}
-
-type tokenRepository struct {
+type TokenRepository struct {
 	DB      *pgxpool.Pool
 	Timeout time.Duration
 }
 
-func NewTokenRepository(db *pgxpool.Pool, timeout time.Duration) *tokenRepository {
-	return &tokenRepository{DB: db, Timeout: timeout}
+func NewTokenRepository(db *pgxpool.Pool, timeout time.Duration) *TokenRepository {
+	return &TokenRepository{DB: db, Timeout: timeout}
 }
 
-func (repo *tokenRepository) Create(t *models.Token, tx pgx.Tx) error {
+func (repo *TokenRepository) Create(t *models.Token, tx pgx.Tx) error {
 	now := time.Now().UTC()
 	t.CreatedAt = now
 	t.UpdatedAt = now
@@ -51,13 +43,13 @@ func (repo *tokenRepository) Create(t *models.Token, tx pgx.Tx) error {
 	}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(t.ID, t.Version)
+		return tx.QueryRow(ctx, query, args...).Scan(&t.ID, &t.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(t.ID, t.Version)
+	return repo.DB.QueryRow(ctx, query, args...).Scan(&t.ID, &t.Version)
 }
 
-func (repo *tokenRepository) Update(t *models.Token, tx pgx.Tx) error {
+func (repo *TokenRepository) Update(t *models.Token, tx pgx.Tx) error {
 	t.UpdatedAt = time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
@@ -69,13 +61,13 @@ func (repo *tokenRepository) Update(t *models.Token, tx pgx.Tx) error {
 	}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query).Scan(t.Version)
+		return tx.QueryRow(ctx, query).Scan(&t.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query).Scan(t.Version)
+	return repo.DB.QueryRow(ctx, query).Scan(&t.Version)
 }
 
-func (repo *tokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error) {
+func (repo *TokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -104,15 +96,15 @@ func (repo *tokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error
 	}
 
 	err := row.Scan(
-		t.ID,
-		t.Hash,
-		t.UserID,
-		t.TokenType,
-		t.InUse,
-		t.CreatedAt,
-		t.UpdatedAt,
-		t.DeletedAt,
-		t.Version,
+		&t.ID,
+		&t.Hash,
+		&t.UserID,
+		&t.TokenType,
+		&t.InUse,
+		&t.CreatedAt,
+		&t.UpdatedAt,
+		&t.DeletedAt,
+		&t.Version,
 	)
 	if err != nil {
 		return nil, err
@@ -121,7 +113,7 @@ func (repo *tokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error
 	return t, nil
 }
 
-func (repo *tokenRepository) Delete(id string, tx pgx.Tx) (err error) {
+func (repo *TokenRepository) Delete(id string, tx pgx.Tx) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -136,7 +128,7 @@ func (repo *tokenRepository) Delete(id string, tx pgx.Tx) (err error) {
 	return
 }
 
-func (repo *tokenRepository) SoftDelete(id string, tx pgx.Tx) error {
+func (repo *TokenRepository) SoftDelete(id string, tx pgx.Tx) error {
 	t, err := repo.GetById(id, tx)
 	if err != nil {
 		return err

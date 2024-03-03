@@ -10,6 +10,8 @@ import (
 
 func main() {
 	c := config.NewConfig()
+	defer c.DB.Close()
+
 	r := getRouter(c)
 
 	srv := http.Server{

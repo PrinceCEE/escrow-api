@@ -15,9 +15,9 @@ const (
 )
 
 type Event struct {
-	Data              any              `json:"data"`
-	OriginEnvironment EventEnvironment `json:"origin_environment"`
-	TargetEnvironment EventEnvironment `json:"target_environment"`
-	EventType         EventType        `json:"event_type"`
+	Data              any              `json:"data" db:"data"`
+	OriginEnvironment EventEnvironment `json:"origin_environment" db:"origin_environment"`
+	TargetEnvironment EventEnvironment `json:"target_environment" db:"target_environment"`
+	EventType         EventType        `json:"event_type" db:"event_type"`
 	ModelMixin
 }

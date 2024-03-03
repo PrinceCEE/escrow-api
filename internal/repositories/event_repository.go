@@ -6,27 +6,20 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type EventRepository interface {
-	Create(e *models.Event) error
-	Update(e *models.Event) error
-	GetById(id string) (*models.Event, error)
-	Delete(id string) error
-	SoftDelete(id string) error
-}
-
-type eventRepository struct {
+type EventRepository struct {
 	DB      *pgxpool.Pool
 	Timeout time.Duration
 }
 
-func NewEventRepository(db *pgxpool.Pool, timeout time.Duration) *eventRepository {
-	return &eventRepository{DB: db, Timeout: timeout}
+func NewEventRepository(db *pgxpool.Pool, timeout time.Duration) *EventRepository {
+	return &EventRepository{DB: db, Timeout: timeout}
 }
 
-func (repo *eventRepository) Create(e *models.Event) error {
+func (repo *EventRepository) Create(e *models.Event, tx pgx.Tx) error {
 	now := time.Now().UTC()
 	e.CreatedAt = now
 	e.UpdatedAt = now
@@ -49,10 +42,14 @@ func (repo *eventRepository) Create(e *models.Event) error {
 		e.UpdatedAt,
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(e.ID, e.Version)
+	if tx != nil {
+		return tx.QueryRow(ctx, query, args...).Scan(&e.ID, &e.Version)
+	}
+
+	return repo.DB.QueryRow(ctx, query, args...).Scan(&e.ID, &e.Version)
 }
 
-func (repo *eventRepository) Update(e *models.Event) error {
+func (repo *EventRepository) Update(e *models.Event, tx pgx.Tx) error {
 	e.UpdatedAt = time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
@@ -63,10 +60,14 @@ func (repo *eventRepository) Update(e *models.Event) error {
 		return err
 	}
 
-	return repo.DB.QueryRow(ctx, query).Scan(e.Version)
+	if tx != nil {
+		return tx.QueryRow(ctx, query).Scan(&e.Version)
+	}
+
+	return repo.DB.QueryRow(ctx, query).Scan(&e.Version)
 }
 
-func (repo *eventRepository) GetById(id string) (*models.Event, error) {
+func (repo *EventRepository) GetById(id string, tx pgx.Tx) (*models.Event, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -87,16 +88,23 @@ func (repo *eventRepository) GetById(id string) (*models.Event, error) {
 		WHERE id = $1
 	`
 
-	err := repo.DB.QueryRow(ctx, query, id).Scan(
-		e.ID,
-		e.Data,
-		e.OriginEnvironment,
-		e.TargetEnvironment,
-		e.EventType,
-		e.CreatedAt,
-		e.UpdatedAt,
-		e.DeletedAt,
-		e.Version,
+	var row pgx.Row
+	if tx != nil {
+		row = tx.QueryRow(ctx, query, id)
+	} else {
+		row = repo.DB.QueryRow(ctx, query, id)
+	}
+
+	err := row.Scan(
+		&e.ID,
+		&e.Data,
+		&e.OriginEnvironment,
+		&e.TargetEnvironment,
+		&e.EventType,
+		&e.CreatedAt,
+		&e.UpdatedAt,
+		&e.DeletedAt,
+		&e.Version,
 	)
 	if err != nil {
 		return nil, err
@@ -105,18 +113,22 @@ func (repo *eventRepository) GetById(id string) (*models.Event, error) {
 	return e, nil
 }
 
-func (repo *eventRepository) Delete(id string) error {
+func (repo *EventRepository) Delete(id string, tx pgx.Tx) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
 	query := `DELETE FROM events WHERE id = $1`
 
-	_, err := repo.DB.Exec(ctx, query)
+	if tx != nil {
+		_, err = tx.Exec(ctx, query, id)
+	} else {
+		_, err = repo.DB.Exec(ctx, query, id)
+	}
 	return err
 }
 
-func (repo *eventRepository) SoftDelete(id string) error {
-	e, err := repo.GetById(id)
+func (repo *EventRepository) SoftDelete(id string, tx pgx.Tx) error {
+	e, err := repo.GetById(id, tx)
 	if err != nil {
 		return err
 	}
@@ -125,5 +137,5 @@ func (repo *eventRepository) SoftDelete(id string) error {
 	e.UpdatedAt = now
 	e.DeletedAt = now
 
-	return repo.Update(e)
+	return repo.Update(e, tx)
 }

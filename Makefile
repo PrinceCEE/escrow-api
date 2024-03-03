@@ -4,7 +4,7 @@ include .env
 api/dev:
 	@echo "starting the web server"
 	@clear
-	go run ./cmd/app -env=development -loglevel=debug
+	watchexec -r -e go go run ./cmd/app -env=development -loglevel=debug
 
 .PHONY: migration/create
 migration/create:

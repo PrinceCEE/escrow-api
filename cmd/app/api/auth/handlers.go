@@ -152,6 +152,8 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		err := h.c.UserRepository.Create(user, tx)
+		fmt.Println(user.Version)
+		fmt.Println(user.ID.String())
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)

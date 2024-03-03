@@ -11,26 +11,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type UserRepository interface {
-	Create(u *models.User, tx pgx.Tx) error
-	Update(u *models.User, tx pgx.Tx) error
-	GetById(id string, tx pgx.Tx) (*models.User, error)
-	GetByEmail(email string, tx pgx.Tx) (*models.User, error)
-	GetByPhoneNumber(phone string, tx pgx.Tx) (*models.User, error)
-	Delete(id string, tx pgx.Tx) error
-	SoftDelete(id string, tx pgx.Tx) error
-}
-
-type userRepository struct {
+type UserRepository struct {
 	DB      *pgxpool.Pool
 	Timeout time.Duration
 }
 
-func NewUserRepository(db *pgxpool.Pool, timeout time.Duration) *userRepository {
-	return &userRepository{DB: db, Timeout: timeout}
+func NewUserRepository(db *pgxpool.Pool, timeout time.Duration) *UserRepository {
+	return &UserRepository{DB: db, Timeout: timeout}
 }
 
-func (repo *userRepository) Create(u *models.User, tx pgx.Tx) error {
+func (repo *UserRepository) Create(u *models.User, tx pgx.Tx) error {
 	now := time.Now().UTC()
 	u.CreatedAt = now
 	u.UpdatedAt = now
@@ -47,13 +37,13 @@ func (repo *userRepository) Create(u *models.User, tx pgx.Tx) error {
 	defer cancel()
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(u.ID, u.Version)
+		return tx.QueryRow(ctx, query, args...).Scan(&u.ID, &u.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(u.ID, u.Version)
+	return repo.DB.QueryRow(ctx, query, args...).Scan(&u.ID, &u.Version)
 }
 
-func (repo *userRepository) Update(u *models.User, tx pgx.Tx) error {
+func (repo *UserRepository) Update(u *models.User, tx pgx.Tx) error {
 	u.UpdatedAt = time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
@@ -65,13 +55,13 @@ func (repo *userRepository) Update(u *models.User, tx pgx.Tx) error {
 	}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query).Scan(u.Version)
+		return tx.QueryRow(ctx, query).Scan(&u.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query).Scan(u.Version)
+	return repo.DB.QueryRow(ctx, query).Scan(&u.Version)
 }
 
-func (repo *userRepository) getByKey(key string, value any, tx pgx.Tx) (*models.User, error) {
+func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -107,19 +97,19 @@ func (repo *userRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 	}
 
 	err := row.Scan(
-		u.ID,
-		u.Email,
-		u.PhoneNumber,
-		u.FirstName,
-		u.LastName,
-		u.IsPhoneNumberVerified,
-		u.IsEmailVerified,
-		u.RegStage,
-		u.AccountType,
-		u.CreatedAt,
-		u.UpdatedAt,
-		u.DeletedAt,
-		u.Version,
+		&u.ID,
+		&u.Email,
+		&u.PhoneNumber,
+		&u.FirstName,
+		&u.LastName,
+		&u.IsPhoneNumberVerified,
+		&u.IsEmailVerified,
+		&u.RegStage,
+		&u.AccountType,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+		&u.DeletedAt,
+		&u.Version,
 	)
 	if err != nil {
 		return nil, err
@@ -128,19 +118,19 @@ func (repo *userRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 	return u, nil
 }
 
-func (repo *userRepository) GetById(id string, tx pgx.Tx) (*models.User, error) {
+func (repo *UserRepository) GetById(id string, tx pgx.Tx) (*models.User, error) {
 	return repo.getByKey("id", id, tx)
 }
 
-func (repo *userRepository) GetByEmail(email string, tx pgx.Tx) (*models.User, error) {
+func (repo *UserRepository) GetByEmail(email string, tx pgx.Tx) (*models.User, error) {
 	return repo.getByKey("email", email, tx)
 }
 
-func (repo *userRepository) GetByPhoneNumber(phone string, tx pgx.Tx) (*models.User, error) {
+func (repo *UserRepository) GetByPhoneNumber(phone string, tx pgx.Tx) (*models.User, error) {
 	return repo.getByKey("phone_number", phone, tx)
 }
 
-func (repo *userRepository) Delete(id string, tx pgx.Tx) (err error) {
+func (repo *UserRepository) Delete(id string, tx pgx.Tx) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -155,7 +145,7 @@ func (repo *userRepository) Delete(id string, tx pgx.Tx) (err error) {
 	return
 }
 
-func (repo *userRepository) SoftDelete(id string, tx pgx.Tx) error {
+func (repo *UserRepository) SoftDelete(id string, tx pgx.Tx) error {
 	u, err := repo.GetById(id, tx)
 	if err != nil {
 		return nil

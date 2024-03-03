@@ -11,12 +11,12 @@ import (
 )
 
 type Repositories struct {
-	UserRepository     repositories.UserRepository
-	BusinessRepository repositories.BusinessRepository
-	AuthRepository     repositories.AuthRepository
-	EventRepository    repositories.EventRepository
-	TokenRepository    repositories.TokenRepository
-	OtpRepository      repositories.OtpRepository
+	UserRepository     *repositories.UserRepository
+	BusinessRepository *repositories.BusinessRepository
+	AuthRepository     *repositories.AuthRepository
+	EventRepository    *repositories.EventRepository
+	TokenRepository    *repositories.TokenRepository
+	OtpRepository      *repositories.OtpRepository
 }
 
 func configureDB(dsn string) (*pgxpool.Pool, error) {

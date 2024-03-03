@@ -10,24 +10,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type OtpRepository interface {
-	Create(otp *models.Otp, tx pgx.Tx) error
-	Update(otp *models.Otp, tx pgx.Tx) error
-	GetById(id string, tx pgx.Tx) (*models.Otp, error)
-	Delete(id string, tx pgx.Tx) error
-	SoftDelete(id string, tx pgx.Tx) error
-}
-
-type otpRepository struct {
+type OtpRepository struct {
 	DB      *pgxpool.Pool
 	Timeout time.Duration
 }
 
-func NewOtpRepository(db *pgxpool.Pool, timeout time.Duration) *otpRepository {
-	return &otpRepository{DB: db, Timeout: timeout}
+func NewOtpRepository(db *pgxpool.Pool, timeout time.Duration) *OtpRepository {
+	return &OtpRepository{DB: db, Timeout: timeout}
 }
 
-func (repo *otpRepository) Create(otp *models.Otp, tx pgx.Tx) error {
+func (repo *OtpRepository) Create(otp *models.Otp, tx pgx.Tx) error {
 	now := time.Now().UTC()
 	otp.CreatedAt = now
 	otp.UpdatedAt = now
@@ -44,13 +36,13 @@ func (repo *otpRepository) Create(otp *models.Otp, tx pgx.Tx) error {
 	args := []any{otp.UserID, otp.Code, otp.IsUsed, otp.CreatedAt, otp.UpdatedAt}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(otp.ID, otp.Version)
+		return tx.QueryRow(ctx, query, args...).Scan(&otp.ID, &otp.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(otp.ID, otp.Version)
+	return repo.DB.QueryRow(ctx, query, args...).Scan(&otp.ID, &otp.Version)
 }
 
-func (repo *otpRepository) Update(otp *models.Otp, tx pgx.Tx) error {
+func (repo *OtpRepository) Update(otp *models.Otp, tx pgx.Tx) error {
 	otp.UpdatedAt = time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
@@ -62,13 +54,13 @@ func (repo *otpRepository) Update(otp *models.Otp, tx pgx.Tx) error {
 	}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query).Scan(otp.Version)
+		return tx.QueryRow(ctx, query).Scan(&otp.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query).Scan(otp.Version)
+	return repo.DB.QueryRow(ctx, query).Scan(&otp.Version)
 }
 
-func (repo *otpRepository) GetById(id string, tx pgx.Tx) (*models.Otp, error) {
+func (repo *OtpRepository) GetById(id string, tx pgx.Tx) (*models.Otp, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -96,14 +88,14 @@ func (repo *otpRepository) GetById(id string, tx pgx.Tx) (*models.Otp, error) {
 	}
 
 	err := row.Scan(
-		otp.ID,
-		otp.UserID,
-		otp.Code,
-		otp.IsUsed,
-		otp.CreatedAt,
-		otp.UpdatedAt,
-		otp.DeletedAt,
-		otp.Version,
+		&otp.ID,
+		&otp.UserID,
+		&otp.Code,
+		&otp.IsUsed,
+		&otp.CreatedAt,
+		&otp.UpdatedAt,
+		&otp.DeletedAt,
+		&otp.Version,
 	)
 	if err != nil {
 		return nil, err
@@ -112,7 +104,7 @@ func (repo *otpRepository) GetById(id string, tx pgx.Tx) (*models.Otp, error) {
 	return otp, nil
 }
 
-func (repo *otpRepository) Delete(id string, tx pgx.Tx) (err error) {
+func (repo *OtpRepository) Delete(id string, tx pgx.Tx) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -127,7 +119,7 @@ func (repo *otpRepository) Delete(id string, tx pgx.Tx) (err error) {
 	return
 }
 
-func (repo *otpRepository) SoftDelete(id string, tx pgx.Tx) error {
+func (repo *OtpRepository) SoftDelete(id string, tx pgx.Tx) error {
 	a, err := repo.GetById(id, tx)
 	if err != nil {
 		return err
