@@ -3,9 +3,15 @@ package customers
 import (
 	"net/http"
 
-	"github.com/Bupher-Co/bupher-api/cmd/app/pkg"
+	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
+	"github.com/Bupher-Co/bupher-api/config"
 )
 
-func notImplemented(w http.ResponseWriter, r *http.Request) {
-	pkg.SendErrorResponse(w, pkg.ApiResponse{Message: "not implemented"}, http.StatusNotImplemented)
+type customerHandler struct {
+	c *config.Config
+}
+
+func (h *customerHandler) notImplemented(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{Message: "not implemented"}
+	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }

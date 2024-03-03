@@ -1,5 +1,9 @@
 package models
 
+import (
+	"github.com/gofrs/uuid"
+)
+
 type TokenType string
 
 const (
@@ -8,8 +12,8 @@ const (
 )
 
 type Token struct {
-	Hash      string    `json:"hash"`
-	UserID    string    `json:"user_id"`
+	Hash      []byte    `json:"hash"`
+	UserID    uuid.UUID `json:"user_id"`
 	TokenType TokenType `json:"token_type"`
 	InUse     bool      `json:"in_use"`
 	ModelMixin

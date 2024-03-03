@@ -4,7 +4,10 @@ import (
 	"errors"
 	"flag"
 	"os"
+	"time"
 
+	"github.com/Bupher-Co/bupher-api/internal/repositories"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 )
@@ -15,14 +18,32 @@ type Logger struct {
 }
 
 type Config struct {
-	DbManager *DbManager
-	Env       *Env
-	*Logger
+	Repositories
+	DB          *pgxpool.Pool
+	Env         Env
+	RedisClient *redisClient
+	Logger      Logger
 }
 
-var Cfg = newConfig()
+type Env struct {
+	PORT           string
+	DSN            string
+	REDIS_URL      string
+	EMAIL_USERNAME string
+	EMAIL_PASSWORD string
+	ENVIRONMENT    string
+	JWT_KEY        string
+}
 
-func newConfig() *Config {
+func (e *Env) IsDevelopment() bool {
+	return e.ENVIRONMENT == "development"
+}
+
+func (e *Env) IsProduction() bool {
+	return e.ENVIRONMENT == "production"
+}
+
+func NewConfig() *Config {
 	var environment, loglevel string
 
 	flag.StringVar(&environment, "env", "development", "The environment of the app(development/production)")
@@ -36,21 +57,45 @@ func newConfig() *Config {
 	}
 
 	level := getLoggerLevel(loglevel)
-	logger := &Logger{
+	logger := Logger{
 		l:     zerolog.New(os.Stderr).Level(level).With().Timestamp().Logger(),
 		level: level,
 	}
 
-	env := newEnv()
-	manager, err := newDbManager(env)
+	env := Env{
+		PORT:           os.Getenv("PORT"),
+		DSN:            os.Getenv("DSN"),
+		REDIS_URL:      os.Getenv("REDIS_URL"),
+		EMAIL_USERNAME: os.Getenv("EMAIL_USERNAME"),
+		EMAIL_PASSWORD: os.Getenv("EMAIL_PASSWORD"),
+		ENVIRONMENT:    os.Getenv("ENVIRONMENT"),
+		JWT_KEY:        os.Getenv("JWT_KEY"),
+	}
+
+	dbpool, err := configureDB(env.DSN)
 	if err != nil {
 		logger.Log(zerolog.PanicLevel, "error connecting to the db", nil, err)
 	}
 
+	rclient, err := newRedisClient(env)
+	if err != nil {
+		logger.Log(zerolog.PanicLevel, "error instantiating redis client", nil, err)
+	}
+
+	timeout := 10 * time.Second
 	return &Config{
-		Env:       env,
-		DbManager: manager,
-		Logger:    logger,
+		DB:          dbpool,
+		Env:         env,
+		Logger:      logger,
+		RedisClient: rclient,
+		Repositories: Repositories{
+			AuthRepository:     repositories.NewAuthRepository(dbpool, timeout),
+			BusinessRepository: repositories.NewBusinessRepository(dbpool, timeout),
+			EventRepository:    repositories.NewEventRepository(dbpool, timeout),
+			TokenRepository:    repositories.NewTokenRepository(dbpool, timeout),
+			UserRepository:     repositories.NewUserRepository(dbpool, timeout),
+			OtpRepository:      repositories.NewOtpRepository(dbpool, timeout),
+		},
 	}
 }
 

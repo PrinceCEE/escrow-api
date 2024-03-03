@@ -1,12 +1,10 @@
-package pkg
+package response
 
 import (
 	"errors"
 	"net/http"
 
-	"github.com/Bupher-Co/bupher-api/config"
-	"github.com/Bupher-Co/bupher-api/pkg"
-	"github.com/rs/zerolog"
+	"github.com/Bupher-Co/bupher-api/pkg/json"
 )
 
 var (
@@ -56,9 +54,9 @@ func SendResponse(w http.ResponseWriter, b ApiResponse, headers ...map[string]st
 
 	w.Header().Set("Content-Type", "application/json")
 
-	jsonData, err := pkg.WriteJSON(b)
+	jsonData, err := json.WriteJSON(b)
 	if err != nil {
-		config.Cfg.Log(zerolog.PanicLevel, "error creating json data", nil, err)
+		panic(err)
 	}
 
 	w.Write(jsonData)

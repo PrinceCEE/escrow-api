@@ -4,45 +4,43 @@ import (
 	"context"
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/repositories"
+	"github.com/Bupher-Co/bupher-api/internal/repositories"
+	pgxuuid "github.com/jackc/pgx-gofrs-uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Repositories struct {
-	UserRepository,
-	BusinessRepository,
-	AuthRepository,
-	EventRepository,
-	TokenRepository repositories.Repository
+	UserRepository     repositories.UserRepository
+	BusinessRepository repositories.BusinessRepository
+	AuthRepository     repositories.AuthRepository
+	EventRepository    repositories.EventRepository
+	TokenRepository    repositories.TokenRepository
+	OtpRepository      repositories.OtpRepository
 }
 
-type DbManager struct {
-	DB           *pgxpool.Pool
-	Repositories Repositories
-}
-
-func newDbManager(env *Env) (*DbManager, error) {
-	config, err := pgxpool.ParseConfig(env.DSN)
+func configureDB(dsn string) (*pgxpool.Pool, error) {
+	parsedConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	setupHooks(parsedConfig)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	pool, err := pgxpool.NewWithConfig(ctx, config)
+	pool, err := pgxpool.NewWithConfig(ctx, parsedConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	return &DbManager{
-		DB: pool,
-		Repositories: Repositories{
-			AuthRepository:     repositories.NewAuthRepository(pool),
-			BusinessRepository: repositories.NewBusinessRepository(pool),
-			EventRepository:    repositories.NewEventRepository(pool),
-			TokenRepository:    repositories.NewTokenRepository(pool),
-			UserRepository:     repositories.NewUserRepository(pool),
-		},
-	}, nil
+	return pool, nil
+}
+
+func setupHooks(parseConfig *pgxpool.Config) {
+	parseConfig.AfterConnect = func(ctx context.Context, c *pgx.Conn) error {
+		pgxuuid.Register(c.TypeMap())
+		return nil
+	}
 }
