@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
+	"github.com/Bupher-Co/bupher-api/pkg/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -43,17 +44,22 @@ func (repo *UserRepository) Create(u *models.User, tx pgx.Tx) error {
 	return repo.DB.QueryRow(ctx, query, args...).Scan(&u.ID, &u.Version)
 }
 
-func (repo *UserRepository) Update(query string, args []any, u *models.User, tx pgx.Tx) error {
+func (repo *UserRepository) Update(u *models.User, tx pgx.Tx) error {
 	u.UpdatedAt = time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(&u.Version)
+	qs, err := utils.GetUpdateQueryFromStruct(u, "users")
+	if err != nil {
+		return err
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(&u.Version)
+	if tx != nil {
+		return tx.QueryRow(ctx, qs.Query, qs.Args...).Scan(&u.Version)
+	}
+
+	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&u.Version)
 }
 
 func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.User, error) {
@@ -146,26 +152,8 @@ func (repo *UserRepository) SoftDelete(id string, tx pgx.Tx) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
-	defer cancel()
-
 	now := time.Now().UTC()
 	u.DeletedAt = models.NullTime{NullTime: sql.NullTime{Time: now}}
 	u.UpdatedAt = now
-
-	query := `
-	UPDATE users SET deleted_at = $1, updated_at = $2, version = version + 1
-	WHERE id = $3 AND version = $4
-	RETURNING version
-`
-	args := []any{u.DeletedAt, u.UpdatedAt, u.ID, u.Version}
-
-	var row pgx.Row
-	if tx != nil {
-		row = tx.QueryRow(ctx, query, args...)
-	} else {
-		row = repo.DB.QueryRow(ctx, query, args...)
-	}
-
-	return row.Scan(&u.Version)
+	return repo.Update(u, tx)
 }

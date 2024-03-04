@@ -41,12 +41,6 @@ func SendResponse(w http.ResponseWriter, b ApiResponse, headers ...map[string]st
 		b.Success = &s
 	}
 
-	if b.StatusCode == nil {
-		w.WriteHeader(http.StatusOK)
-	} else {
-		w.WriteHeader(*b.StatusCode)
-	}
-
 	if len(headers) > 0 {
 		for k, v := range headers[0] {
 			w.Header().Set(k, v)
@@ -54,6 +48,12 @@ func SendResponse(w http.ResponseWriter, b ApiResponse, headers ...map[string]st
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+
+	if b.StatusCode == nil {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(*b.StatusCode)
+	}
 
 	jsonData, err := json.WriteJSON(b)
 	if err != nil {
