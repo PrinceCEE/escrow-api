@@ -49,16 +49,16 @@ func (repo *AuthRepository) Update(a *models.Auth, tx pgx.Tx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	query, err := utils.GetUpdateQueryFromStruct(a, "auths")
+	qs, err := utils.GetUpdateQueryFromStruct(a, "auths")
 	if err != nil {
 		return err
 	}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query).Scan(&a.Version)
+		return tx.QueryRow(ctx, qs.Query, qs.Args...).Scan(&a.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query).Scan(&a.Version)
+	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&a.Version)
 }
 
 func (repo *AuthRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) {

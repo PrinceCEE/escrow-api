@@ -56,16 +56,16 @@ func (repo *EventRepository) Update(e *models.Event, tx pgx.Tx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	query, err := utils.GetUpdateQueryFromStruct(e, "events")
+	qs, err := utils.GetUpdateQueryFromStruct(e, "events")
 	if err != nil {
 		return err
 	}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query).Scan(&e.Version)
+		return tx.QueryRow(ctx, qs.Query, qs.Args...).Scan(&e.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query).Scan(&e.Version)
+	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&e.Version)
 }
 
 func (repo *EventRepository) GetById(id string, tx pgx.Tx) (*models.Event, error) {

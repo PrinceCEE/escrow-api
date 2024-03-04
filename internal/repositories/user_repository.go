@@ -50,16 +50,16 @@ func (repo *UserRepository) Update(u *models.User, tx pgx.Tx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	query, err := utils.GetUpdateQueryFromStruct(u, "users")
+	qs, err := utils.GetUpdateQueryFromStruct(u, "users")
 	if err != nil {
 		return err
 	}
-
+	fmt.Println(qs)
 	if tx != nil {
-		return tx.QueryRow(ctx, query).Scan(&u.Version)
+		return tx.QueryRow(ctx, qs.Query, qs.Args...).Scan(&u.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query).Scan(&u.Version)
+	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&u.Version)
 }
 
 func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.User, error) {

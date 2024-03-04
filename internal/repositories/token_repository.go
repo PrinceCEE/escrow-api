@@ -56,16 +56,16 @@ func (repo *TokenRepository) Update(t *models.Token, tx pgx.Tx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	query, err := utils.GetUpdateQueryFromStruct(t, "tokens")
+	qs, err := utils.GetUpdateQueryFromStruct(t, "tokens")
 	if err != nil {
 		return err
 	}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query).Scan(&t.Version)
+		return tx.QueryRow(ctx, qs.Query, qs.Args...).Scan(&t.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query).Scan(&t.Version)
+	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&t.Version)
 }
 
 func (repo *TokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error) {

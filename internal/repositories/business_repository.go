@@ -49,16 +49,16 @@ func (repo *BusinessRepository) Update(b *models.Business, tx pgx.Tx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	query, err := utils.GetUpdateQueryFromStruct(b, "businesses")
+	qs, err := utils.GetUpdateQueryFromStruct(b, "businesses")
 	if err != nil {
 		return err
 	}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query).Scan(&b.Version)
+		return tx.QueryRow(ctx, qs.Query, qs.Args...).Scan(&b.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query).Scan(&b.Version)
+	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&b.Version)
 }
 
 func (repo *BusinessRepository) GetById(id string, tx pgx.Tx) (*models.Business, error) {

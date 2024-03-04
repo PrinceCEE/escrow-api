@@ -14,3 +14,9 @@ type signUpDto struct {
 	BusinessName *string         `json:"business_name" validate:"omitempty,alphanum"`
 	RegStage     *utils.RegStage `json:"reg_stage" validate:"required,numeric,oneof=1 2 3"`
 }
+
+type verifyCodeDto struct {
+	Email   string `json:"email" validate:"required"`
+	Code    string `json:"code" validate:"required,len=4"`
+	OtpType string `json:"otp_type" validate:"required,oneof=SMS EMAIL"`
+}

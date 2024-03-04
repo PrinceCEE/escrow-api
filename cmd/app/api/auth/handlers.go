@@ -92,8 +92,13 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 
 				resp.Message = RegStage1Msg
 				if h.c.Env.IsDevelopment() {
-					resp.Data = map[string]string{
+					resp.Data = map[string]any{
 						"code": otp.Code,
+						"user": user,
+					}
+				} else {
+					resp.Data = map[string]any{
+						"user": user,
 					}
 				}
 
@@ -379,8 +384,99 @@ func (h *authHandler) signIn(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
-	resp := response.ApiResponse{Message: "not implemented"}
-	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
+	resp := response.ApiResponse{}
+	body := new(verifyCodeDto)
+
+	err := json.ReadJSON(r, body)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	validationErrors := validator.ValidateData(body)
+	if validationErrors != nil {
+		resp.Message = response.ErrBadRequest.Error()
+		resp.Data = validationErrors
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.c.UserRepository.GetByEmail(body.Email, nil)
+	if err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			resp.Message = response.ErrNotFound.Error()
+		default:
+			resp.Message = err.Error()
+		}
+
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+	tx, err := h.c.DB.Begin(ctx)
+	defer tx.Rollback(ctx)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	otp, err := h.c.OtpRepository.GetOneByQuery(`
+		WHERE
+			code = $1
+			AND is_used = $2
+			AND user_id = $3
+			AND expires_in >= $4
+	`, []any{body.Code, false, user.ID, time.Now()}, tx)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			resp.Message = "invalid or expired code"
+		default:
+			resp.Message = err.Error()
+		}
+
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	otp.IsUsed = true
+	switch body.OtpType {
+	case "SMS":
+		user.IsPhoneNumberVerified = true
+		resp.Message = "phone number verified successfully"
+	case "EMAIL":
+		user.IsEmailVerified = true
+		resp.Message = "email verified successfully"
+	}
+
+	err = h.c.UserRepository.Update(user, tx)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	err = h.c.OtpRepository.Update(otp, tx)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	resp.Data = user
+	response.SendResponse(w, resp)
 }
 
 func (h *authHandler) resetPassword(w http.ResponseWriter, r *http.Request) {

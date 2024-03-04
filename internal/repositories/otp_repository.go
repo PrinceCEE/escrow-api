@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
@@ -57,16 +58,16 @@ func (repo *OtpRepository) Update(otp *models.Otp, tx pgx.Tx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
-	query, err := utils.GetUpdateQueryFromStruct(otp, "otps")
+	qs, err := utils.GetUpdateQueryFromStruct(otp, "otps")
 	if err != nil {
 		return err
 	}
 
 	if tx != nil {
-		return tx.QueryRow(ctx, query).Scan(&otp.Version)
+		return tx.QueryRow(ctx, qs.Query, qs.Args...).Scan(&otp.Version)
 	}
 
-	return repo.DB.QueryRow(ctx, query).Scan(&otp.Version)
+	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&otp.Version)
 }
 
 func (repo *OtpRepository) GetById(id string, tx pgx.Tx) (*models.Otp, error) {
@@ -110,6 +111,56 @@ func (repo *OtpRepository) GetById(id string, tx pgx.Tx) (*models.Otp, error) {
 		&otp.DeletedAt,
 		&otp.Version,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	return otp, nil
+}
+
+func (repo *OtpRepository) GetOneByQuery(where string, args []any, tx pgx.Tx) (*models.Otp, error) {
+	otp := new(models.Otp)
+
+	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
+	defer cancel()
+
+	query := fmt.Sprintf(`
+		SELECT
+			id,
+			user_id,
+			code,
+			is_used,
+			otp_type,
+			expires_in,
+			created_at,
+			updated_at,
+			deleted_at,
+			version
+		FROM
+			otps
+		%s
+	`, where)
+
+	var row pgx.Row
+	if tx != nil {
+		row = tx.QueryRow(ctx, query, args...)
+	} else {
+		row = repo.DB.QueryRow(ctx, query, args...)
+	}
+
+	err := row.Scan(
+		&otp.ID,
+		&otp.UserID,
+		&otp.Code,
+		&otp.IsUsed,
+		&otp.OtpType,
+		&otp.ExpiresIn,
+		&otp.CreatedAt,
+		&otp.UpdatedAt,
+		&otp.DeletedAt,
+		&otp.Version,
+	)
+
 	if err != nil {
 		return nil, err
 	}

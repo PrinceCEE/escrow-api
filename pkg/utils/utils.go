@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"reflect"
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -45,36 +43,43 @@ func IsInSlice(slice []any, item any) bool {
 	return false
 }
 
-func GetUpdateQueryFromStruct(s any, tableName string) (string, error) {
+type queryFromStruct struct {
+	Query string
+	Args  []any
+}
+
+func GetUpdateQueryFromStruct(s any, tableName string) (*queryFromStruct, error) {
 	mapData, err := StructToMap(s)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	t := reflect.TypeOf(s)
-	userType := reflect.TypeOf(&models.User{})
+	query := fmt.Sprintf("UPDATE %s\nSET version = version + 1, \n", tableName)
 
-	query := fmt.Sprintf("UPDATE %s\nSET ", tableName)
+	keys := []string{}
+	args := []any{}
+
 	for k, v := range mapData {
-		if k == "id" {
+		if k == "id" || k == "version" || v == nil {
 			continue
 		}
 
-		if k == "version" {
-			query += "version = version + 1, "
-		}
-
-		if t == userType {
-			if (k == "email" && v == "") || (k == "phone_number" && v == "") {
-				continue
-			}
-		}
-
-		query += fmt.Sprintf("%s = %s, ", k, v)
+		keys = append(keys, k)
+		args = append(args, v)
 	}
-	query += fmt.Sprintf("\nWHERE id = %s AND version = %s\nRETURNING version", mapData["id"], mapData["version"])
 
-	return query, nil
+	for i, v := range keys {
+		if i+1 == len(keys) {
+			query += fmt.Sprintf("%s = $%d \n", v, i+1)
+		} else {
+			query += fmt.Sprintf("%s = $%d, \n", v, i+1)
+		}
+	}
+
+	version := mapData["version"].(float64)
+	query += fmt.Sprintf("\nWHERE id = '%s' AND version = %d\nRETURNING version", mapData["id"], int64(version))
+
+	return &queryFromStruct{Query: query, Args: args}, nil
 }
 
 func GenerateHash(str string) ([]byte, error) {
