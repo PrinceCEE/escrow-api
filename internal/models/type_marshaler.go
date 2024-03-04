@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 )
 
 type NullString struct {
@@ -14,6 +15,7 @@ type NullTime struct {
 }
 
 func (n NullString) MarshalJSON() ([]byte, error) {
+	fmt.Println(n)
 	if !n.Valid {
 		return json.Marshal(nil)
 	}

@@ -118,7 +118,7 @@ func (repo *OtpRepository) GetById(id string, tx pgx.Tx) (*models.Otp, error) {
 	return otp, nil
 }
 
-func (repo *OtpRepository) GetOneByQuery(where string, args []any, tx pgx.Tx) (*models.Otp, error) {
+func (repo *OtpRepository) GetOneByWhere(where string, args []any, tx pgx.Tx) (*models.Otp, error) {
 	otp := new(models.Otp)
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)

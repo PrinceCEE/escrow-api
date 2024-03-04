@@ -82,7 +82,7 @@ func GetUpdateQueryFromStruct(s any, tableName string) (*queryFromStruct, error)
 	return &queryFromStruct{Query: query, Args: args}, nil
 }
 
-func GenerateHash(str string) ([]byte, error) {
+func GeneratePasswordHash(str string) ([]byte, error) {
 	return bcrypt.GenerateFromPassword([]byte(str), bcrypt.DefaultCost)
 }
 

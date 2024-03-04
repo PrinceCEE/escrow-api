@@ -142,9 +142,9 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case int(utils.RegStage3):
-			resp.Message = "account already exists"
-			response.SendErrorResponse(w, resp, http.StatusBadRequest)
-			return
+			// resp.Message = "account already exists"
+			// response.SendErrorResponse(w, resp, http.StatusBadRequest)
+			// return
 		}
 	}
 
@@ -226,10 +226,19 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			resp.Data = user
 		}
 	case utils.RegStage2:
-		user.PhoneNumber = models.NullString{NullString: sql.NullString{String: *body.PhoneNumber}}
+		user.PhoneNumber = models.NullString{NullString: sql.NullString{String: *body.PhoneNumber, Valid: true}}
 		user.RegStage = int(*body.RegStage)
 
-		err = h.c.UserRepository.Update(user, tx)
+		err = h.c.UserRepository.Update(
+			`
+				UPDATE users SET phone_number = $1, reg_stage = $2, version = version + 1
+				WHERE	version = $3 AND id = $4
+				RETURNING version
+			`,
+			[]any{user.PhoneNumber, user.RegStage, user.Version, user.ID},
+			user,
+			tx,
+		)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -267,18 +276,27 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			resp.Data = user
 		}
 	case utils.RegStage3:
-		user.FirstName = models.NullString{NullString: sql.NullString{String: *body.FirstName}}
-		user.LastName = models.NullString{NullString: sql.NullString{String: *body.LastName}}
+		user.FirstName = models.NullString{NullString: sql.NullString{String: *body.FirstName, Valid: true}}
+		user.LastName = models.NullString{NullString: sql.NullString{String: *body.LastName, Valid: true}}
 		user.RegStage = int(*body.RegStage)
 
-		err = h.c.UserRepository.Update(user, tx)
+		err = h.c.UserRepository.Update(
+			`
+				UPDATE users SET first_name = $1, last_name = $2, reg_stage = $3, version = version + 1
+				WHERE id = $4 AND version = $5
+				RETURNING version
+			`,
+			[]any{user.FirstName, user.LastName, user.RegStage, user.ID, user.Version},
+			user,
+			tx,
+		)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
 			return
 		}
 
-		hashPwd, err := utils.GenerateHash(*body.Password)
+		hashPwd, err := utils.GeneratePasswordHash(*body.Password)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -319,28 +337,14 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		accessTokenHash, err := utils.GenerateHash(accessTokenStr)
-		if err != nil {
-			resp.Message = err.Error()
-			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
-			return
-		}
-
-		refreshTokenHash, err := utils.GenerateHash(accessTokenStr)
-		if err != nil {
-			resp.Message = err.Error()
-			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
-			return
-		}
-
 		accessToken := &models.Token{
-			Hash:      accessTokenHash,
+			Hash:      accessTokenStr,
 			UserID:    user.ID,
 			InUse:     true,
 			TokenType: models.AccessToken,
 		}
 		refreshToken := &models.Token{
-			Hash:      refreshTokenHash,
+			Hash:      refreshTokenStr,
 			UserID:    user.ID,
 			InUse:     true,
 			TokenType: models.RefreshToken,
@@ -424,7 +428,7 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	otp, err := h.c.OtpRepository.GetOneByQuery(`
+	otp, err := h.c.OtpRepository.GetOneByWhere(`
 		WHERE
 			code = $1
 			AND is_used = $2
@@ -454,7 +458,15 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 		resp.Message = "email verified successfully"
 	}
 
-	err = h.c.UserRepository.Update(user, tx)
+	err = h.c.UserRepository.Update(
+		`
+		UPDATE users SET is_phone_number_verified = $1, is_email_verified = $2, version = version + 1
+		WHERE id = $3 AND version = $4
+		RETURNING version`,
+		[]any{user.IsPhoneNumberVerified, user.IsEmailVerified, user.ID, user.Version},
+		user,
+		tx,
+	)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
