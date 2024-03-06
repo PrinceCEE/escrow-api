@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Bupher-Co/bupher-api/internal/repositories"
+	"github.com/Bupher-Co/bupher-api/pkg/push"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
@@ -96,6 +97,7 @@ type IConfig interface {
 	GetDB() *pgxpool.Pool
 	GetRedisClient() *RedisClient
 	GetLogger() *Logger
+	GetPush() push.IPush
 }
 
 type Config struct {
@@ -108,6 +110,7 @@ type Config struct {
 	DB                 *pgxpool.Pool
 	RedisClient        *RedisClient
 	Logger             *Logger
+	Push               push.IPush
 }
 
 func NewConfig() *Config {
@@ -150,6 +153,7 @@ func NewConfig() *Config {
 		TokenRepository:    repositories.NewTokenRepository(dbpool, timeout),
 		UserRepository:     repositories.NewUserRepository(dbpool, timeout),
 		OtpRepository:      repositories.NewOtpRepository(dbpool, timeout),
+		Push:               &push.Push{},
 	}
 }
 
@@ -191,4 +195,8 @@ func (c *Config) GetRedisClient() *RedisClient {
 
 func (c *Config) GetLogger() *Logger {
 	return c.Logger
+}
+
+func (c *Config) GetPush() push.IPush {
+	return &push.Push{}
 }

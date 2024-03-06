@@ -8,6 +8,13 @@ import (
 	"github.com/jordan-wright/email"
 )
 
+type IPush interface {
+	SendSMS(data *Sms)
+	SendEmail(data *Email) error
+}
+
+type Push struct{}
+
 const (
 	ErrSendingEmailMsg = "error sending email"
 )
@@ -20,7 +27,7 @@ type Email struct {
 	Html    string
 }
 
-func SendEmail(data *Email) error {
+func (p *Push) SendEmail(data *Email) error {
 	username := os.Getenv("EMAIL_USERNAME")
 	password := os.Getenv("EMAIL_PASSWORD")
 	from := os.Getenv("EMAIL_FROM")
@@ -55,3 +62,10 @@ func SendEmail(data *Email) error {
 
 	return nil
 }
+
+type Sms struct {
+	Phone   string
+	Message string
+}
+
+func (p *Push) SendSMS(data *Sms) {}
