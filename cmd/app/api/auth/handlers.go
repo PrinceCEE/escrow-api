@@ -81,7 +81,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 				}
 
 				utils.Background(func() {
-					err = push.SendEmail(&push.Email{
+					err = h.c.GetPush().SendEmail(&push.Email{
 						To:      []string{user.Email},
 						Subject: VerifyEmailSubject,
 						Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
@@ -127,7 +127,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 				}
 
 				utils.Background(func() {
-					push.SendSMS(&push.Sms{
+					h.c.GetPush().SendSMS(&push.Sms{
 						Phone:   user.PhoneNumber.String,
 						Message: fmt.Sprintf("Use code %s to verify your phone number", otp.Code),
 					})
@@ -135,7 +135,12 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 
 				resp.Message = RegStage2Msg
 				if h.c.Getenv("ENVIRONMENT") == "development" {
-					resp.Data = map[string]string{
+					resp.Data = map[string]any{
+						"code": otp.Code,
+						"user": user,
+					}
+				} else {
+					resp.Data = map[string]any{
 						"code": otp.Code,
 					}
 				}
@@ -206,7 +211,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		utils.Background(func() {
-			err = push.SendEmail(&push.Email{
+			err = h.c.GetPush().SendEmail(&push.Email{
 				To:      []string{user.Email},
 				Subject: VerifyEmailSubject,
 				Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
@@ -226,7 +231,9 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 				"user": user,
 			}
 		} else {
-			resp.Data = user
+			resp.Data = map[string]any{
+				"user": user,
+			}
 		}
 	case utils.RegStage2:
 		user.PhoneNumber = models.NullString{NullString: sql.NullString{String: *body.PhoneNumber, Valid: true}}
@@ -254,7 +261,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		utils.Background(func() {
-			push.SendSMS(&push.Sms{
+			h.c.GetPush().SendSMS(&push.Sms{
 				Phone:   user.PhoneNumber.String,
 				Message: fmt.Sprintf("Use code %s to verify your phone number", otp.Code),
 			})
@@ -267,7 +274,9 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 				"user": user,
 			}
 		} else {
-			resp.Data = user
+			resp.Data = map[string]any{
+				"user": user,
+			}
 		}
 	case utils.RegStage3:
 		user.FirstName = models.NullString{NullString: sql.NullString{String: *body.FirstName, Valid: true}}
@@ -350,7 +359,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		resp.Message = RegStage3Msg
-		resp.Data = user
+		resp.Data = map[string]any{"user": user}
 		resp.Meta = response.ApiResponseMeta{
 			AccessToken:  &accessTokenStr,
 			RefreshToken: &refreshTokenStr,
