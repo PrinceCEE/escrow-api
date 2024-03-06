@@ -7,10 +7,12 @@ import (
 	"github.com/Bupher-Co/bupher-api/internal/repositories"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/mock"
 )
 
 type UserRepository struct {
 	repo *repositories.UserRepository
+	mock.Mock
 }
 
 func NewUserRepository(db *pgxpool.Pool, timeout time.Duration) *UserRepository {

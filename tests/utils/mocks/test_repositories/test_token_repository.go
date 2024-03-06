@@ -7,10 +7,12 @@ import (
 	"github.com/Bupher-Co/bupher-api/internal/repositories"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/mock"
 )
 
 type TokenRepository struct {
 	repo *repositories.TokenRepository
+	mock.Mock
 }
 
 func NewTokenRepository(db *pgxpool.Pool, timeout time.Duration) *TokenRepository {

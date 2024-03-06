@@ -7,10 +7,12 @@ import (
 	"github.com/Bupher-Co/bupher-api/internal/repositories"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/mock"
 )
 
 type TestEventRepository struct {
 	repo *repositories.EventRepository
+	mock.Mock
 }
 
 func NewEventRepository(db *pgxpool.Pool, timeout time.Duration) *TestEventRepository {

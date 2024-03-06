@@ -10,6 +10,7 @@ import (
 	"github.com/Bupher-Co/bupher-api/tests/utils/mocks/test_repositories"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/mock"
 )
 
 type TestConfig struct {
@@ -22,6 +23,7 @@ type TestConfig struct {
 	DB                 *pgxpool.Pool
 	RedisClient        *config.RedisClient
 	Logger             *config.Logger
+	mock.Mock
 }
 
 func NewTestConfig() *TestConfig {
