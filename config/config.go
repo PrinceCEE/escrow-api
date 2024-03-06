@@ -17,6 +17,10 @@ type Logger struct {
 	level zerolog.Level
 }
 
+func NewLogger(l zerolog.Logger, level zerolog.Level) *Logger {
+	return &Logger{l, level}
+}
+
 func getLoggerLevel(loglevel string) zerolog.Level {
 	switch loglevel {
 	case zerolog.LevelTraceValue:
@@ -90,7 +94,7 @@ type IConfig interface {
 	GetTokenRepository() repositories.ITokenRepository
 	GetUserRepository() repositories.IUserRepository
 	GetDB() *pgxpool.Pool
-	GetRedisClient() *redisClient
+	GetRedisClient() *RedisClient
 	GetLogger() *Logger
 }
 
@@ -102,7 +106,7 @@ type Config struct {
 	TokenRepository    repositories.ITokenRepository
 	UserRepository     repositories.IUserRepository
 	DB                 *pgxpool.Pool
-	RedisClient        *redisClient
+	RedisClient        *RedisClient
 	Logger             *Logger
 }
 
@@ -120,17 +124,17 @@ func NewConfig() *Config {
 	}
 
 	level := getLoggerLevel(loglevel)
-	logger := &Logger{
-		l:     zerolog.New(os.Stderr).Level(level).With().Timestamp().Logger(),
-		level: level,
-	}
+	logger := NewLogger(
+		zerolog.New(os.Stderr).Level(level).With().Timestamp().Logger(),
+		level,
+	)
 
 	dbpool, err := configureDB(os.Getenv("DSN"))
 	if err != nil {
 		logger.Log(zerolog.PanicLevel, "error connecting to the db", nil, err)
 	}
 
-	rclient, err := newRedisClient(os.Getenv("REDIS_URL"))
+	rclient, err := NewRedisClient(os.Getenv("REDIS_URL"))
 	if err != nil {
 		logger.Log(zerolog.PanicLevel, "error instantiating redis client", nil, err)
 	}
@@ -181,7 +185,7 @@ func (c *Config) GetDB() *pgxpool.Pool {
 	return c.DB
 }
 
-func (c *Config) GetRedisClient() *redisClient {
+func (c *Config) GetRedisClient() *RedisClient {
 	return c.RedisClient
 }
 

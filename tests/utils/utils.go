@@ -1,9 +1,13 @@
-package testutils
+package utils
 
 import (
 	"context"
+	"net/http/httptest"
 	"time"
 
+	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/routes"
+	"github.com/Bupher-Co/bupher-api/config"
+	"github.com/Bupher-Co/bupher-api/tests/utils/mocks/test_config"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -82,4 +86,46 @@ func createTypes(pool *pgxpool.Pool) error {
 
 	_, err := pool.Exec(ctx, createTypesSql)
 	return err
+}
+
+type testServer struct {
+	Server *httptest.Server
+	Config config.IConfig
+}
+
+func NewTestServer() *testServer {
+	c := test_config.NewTestConfig()
+
+	r := routes.GetRouter(c)
+
+	s := httptest.NewServer(r)
+
+	if err := createTypes(c.DB); err != nil {
+		panic(err)
+	}
+
+	return &testServer{s, c}
+}
+
+func (ts *testServer) DropTables() {
+	query := `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`
+
+	ctx := context.Background()
+
+	rows, err := ts.Config.GetDB().Query(ctx, query)
+	if err != nil {
+		panic(err)
+	}
+
+	for rows.Next() {
+		var tableName string
+		if err := rows.Scan(&tableName); err != nil {
+			panic(err)
+		}
+
+		_, err := ts.Config.GetDB().Exec(ctx, `DROP TABLE %s CASCADE`, tableName)
+		if err != nil {
+			panic(err)
+		}
+	}
 }
