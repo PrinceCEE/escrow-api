@@ -2,8 +2,8 @@ include .env
 
 .PHONY: api/dev
 api/dev:
-	@echo "starting the web server"
 	@clear
+	@echo "starting the web server"
 	watchexec -r -e go go run ./cmd/app -env=development -loglevel=debug
 
 .PHONY: migration/create
@@ -20,3 +20,9 @@ migration/up:
 migration/down:
 	@echo "running migration"
 	migrate -path ./migrations -database ${DSN} down
+
+.PHONY: run-tests
+run-tests:
+	@clear
+	@echo "running e2e tests"
+	go test -v ./tests 

@@ -27,7 +27,7 @@ type TestConfig struct {
 }
 
 func NewTestConfig() *TestConfig {
-	dbConfig, err := pgxpool.ParseConfig("postgres://postgres:password@localhost/bupher-test?sslmode=disable")
+	dbConfig, err := pgxpool.ParseConfig("postgres://postgres:password@localhost/bupher_test?sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
