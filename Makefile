@@ -25,4 +25,4 @@ migration/down:
 run-tests:
 	@clear
 	@echo "running e2e tests"
-	go test -v ./tests 
+	go test -v ./tests
