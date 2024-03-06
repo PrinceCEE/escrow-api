@@ -8,7 +8,7 @@ import (
 )
 
 type transactionHandler struct {
-	c *config.Config
+	c config.IConfig
 }
 
 func (h *transactionHandler) createTransaction(w http.ResponseWriter, r *http.Request) {

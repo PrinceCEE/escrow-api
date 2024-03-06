@@ -1,4 +1,4 @@
-package main
+package routes
 
 import (
 	"fmt"
@@ -21,14 +21,14 @@ import (
 	"github.com/go-chi/httprate"
 )
 
-type routeFunc func(*config.Config) chi.Router
+type routeFunc func(c config.IConfig) chi.Router
 
 type routeConfig struct {
 	path string
 	fn   routeFunc
 }
 
-func initRoutes(c *config.Config) chi.Router {
+func initRoutes(c config.IConfig) chi.Router {
 	routes := []routeConfig{
 		{"/auth", auth.AuthRouter},
 		{"/users", users.UsersRouter},
@@ -49,7 +49,7 @@ func initRoutes(c *config.Config) chi.Router {
 	return r
 }
 
-func getRouter(c *config.Config) chi.Router {
+func GetRouter(c config.IConfig) chi.Router {
 	apiRouter := initRoutes(c)
 	r := chi.NewRouter()
 

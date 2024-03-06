@@ -11,6 +11,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type IBusinessRepository interface {
+	Create(b *models.Business, tx pgx.Tx) error
+	Update(b *models.Business, tx pgx.Tx) error
+	GetById(id string, tx pgx.Tx) (*models.Business, error)
+	Delete(id string, tx pgx.Tx) error
+	SoftDelete(id string, tx pgx.Tx) error
+}
+
 type BusinessRepository struct {
 	DB      *pgxpool.Pool
 	Timeout time.Duration

@@ -11,6 +11,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type ITokenRepository interface {
+	Create(b *models.Token, tx pgx.Tx) error
+	Update(b *models.Token, tx pgx.Tx) error
+	GetById(id string, tx pgx.Tx) (*models.Token, error)
+	Delete(id string, tx pgx.Tx) error
+	SoftDelete(id string, tx pgx.Tx) error
+}
+
 type TokenRepository struct {
 	DB      *pgxpool.Pool
 	Timeout time.Duration

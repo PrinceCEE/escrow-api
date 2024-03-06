@@ -8,7 +8,7 @@ import (
 )
 
 type reviewHandler struct {
-	c *config.Config
+	c config.IConfig
 }
 
 func (h *reviewHandler) notImplemented(w http.ResponseWriter, r *http.Request) {

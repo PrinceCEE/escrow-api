@@ -4,20 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/internal/repositories"
 	pgxuuid "github.com/jackc/pgx-gofrs-uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
-
-type Repositories struct {
-	UserRepository     *repositories.UserRepository
-	BusinessRepository *repositories.BusinessRepository
-	AuthRepository     *repositories.AuthRepository
-	EventRepository    *repositories.EventRepository
-	TokenRepository    *repositories.TokenRepository
-	OtpRepository      *repositories.OtpRepository
-}
 
 func configureDB(dsn string) (*pgxpool.Pool, error) {
 	parsedConfig, err := pgxpool.ParseConfig(dsn)

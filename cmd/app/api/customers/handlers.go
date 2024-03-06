@@ -8,7 +8,7 @@ import (
 )
 
 type customerHandler struct {
-	c *config.Config
+	c config.IConfig
 }
 
 func (h *customerHandler) notImplemented(w http.ResponseWriter, r *http.Request) {

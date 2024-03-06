@@ -11,6 +11,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type IEventRepository interface {
+	Create(b *models.Event, tx pgx.Tx) error
+	Update(b *models.Event, tx pgx.Tx) error
+	GetById(id string, tx pgx.Tx) (*models.Event, error)
+	Delete(id string, tx pgx.Tx) error
+	SoftDelete(id string, tx pgx.Tx) error
+}
+
 type EventRepository struct {
 	DB      *pgxpool.Pool
 	Timeout time.Duration

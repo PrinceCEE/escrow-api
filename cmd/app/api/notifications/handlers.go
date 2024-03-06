@@ -8,7 +8,7 @@ import (
 )
 
 type notificationHandler struct {
-	c *config.Config
+	c config.IConfig
 }
 
 func (h *notificationHandler) getNotifications(w http.ResponseWriter, r *http.Request) {

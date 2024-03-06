@@ -8,7 +8,7 @@ import (
 )
 
 type userHandler struct {
-	c *config.Config
+	c config.IConfig
 }
 
 func (h *userHandler) getMe(w http.ResponseWriter, r *http.Request) {

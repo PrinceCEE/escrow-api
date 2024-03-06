@@ -12,6 +12,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type IOtpRepository interface {
+	Create(b *models.Otp, tx pgx.Tx) error
+	Update(b *models.Otp, tx pgx.Tx) error
+	GetById(id string, tx pgx.Tx) (*models.Otp, error)
+	Delete(id string, tx pgx.Tx) error
+	SoftDelete(id string, tx pgx.Tx) error
+	GetOneByWhere(where string, args []any, tx pgx.Tx) (*models.Otp, error)
+}
+
 type OtpRepository struct {
 	DB      *pgxpool.Pool
 	Timeout time.Duration

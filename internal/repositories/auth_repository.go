@@ -11,6 +11,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type IAuthRepository interface {
+	Create(a *models.Auth, tx pgx.Tx) error
+	Update(a *models.Auth, tx pgx.Tx) error
+	GetById(id string, tx pgx.Tx) (*models.Auth, error)
+	Delete(id string, tx pgx.Tx) error
+	SoftDelete(id string, tx pgx.Tx) error
+}
+
 type AuthRepository struct {
 	DB      *pgxpool.Pool
 	Timeout time.Duration

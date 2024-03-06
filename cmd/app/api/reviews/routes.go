@@ -5,7 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func ReviewsRouter(c *config.Config) chi.Router {
+func ReviewsRouter(c config.IConfig) chi.Router {
 	h := reviewHandler{c}
 	r := chi.NewRouter()
 

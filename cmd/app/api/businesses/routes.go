@@ -5,7 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func BusinessRouter(c *config.Config) chi.Router {
+func BusinessRouter(c config.IConfig) chi.Router {
 	h := businessHandler{c}
 	r := chi.NewRouter()
 

@@ -5,7 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func TransactionsRouter(c *config.Config) chi.Router {
+func TransactionsRouter(c config.IConfig) chi.Router {
 	h := transactionHandler{c}
 	r := chi.NewRouter()
 
