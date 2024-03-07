@@ -22,6 +22,23 @@ type AuthHandlerTestSuite struct {
 	password     string
 }
 
+type DataResponse struct {
+	Code string              `json:"code"`
+	User test_utils.TestUser `json:"user,omitempty"`
+}
+
+type MetaResponse struct {
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+}
+
+type Response struct {
+	Success bool         `json:"success"`
+	Message string       `json:"message"`
+	Data    DataResponse `json:"data,omitempty"`
+	Meta    MetaResponse `json:"meta,omitempty"`
+}
+
 func (s *AuthHandlerTestSuite) SetupSuite() {
 	s.ts = test_utils.NewTestServer()
 	s.password = "password"
@@ -41,194 +58,230 @@ func (s *AuthHandlerTestSuite) TearDownSuite() {
 	s.ts.Config.GetDB().Close()
 }
 
-func (s *AuthHandlerTestSuite) TestSignup() {
+func (s *AuthHandlerTestSuite) TestAuthHandler() {
 	url := s.ts.Server.URL + "/api/v1/auth"
 	post := s.ts.Server.Client().Post
 
-	type DataResponse struct {
-		Code string              `json:"code"`
-		User test_utils.TestUser `json:"user,omitempty"`
-	}
+	// test sign up
+	s.Run("sign up", func() {
+		var verifyCode string
 
-	type MetaResponse struct {
-		AccessToken  string `json:"access_token,omitempty"`
-		RefreshToken string `json:"refresh_token,omitempty"`
-	}
+		s.Run("phase 1 sign up", func() {
+			payload, _ := json.WriteJSON(map[string]any{
+				"email":        s.testUser.Email,
+				"account_type": s.testUser.AccountType,
+				"reg_stage":    s.testUser.RegStage,
+			})
 
-	type Response struct {
-		Success bool         `json:"success"`
-		Message string       `json:"message"`
-		Data    DataResponse `json:"data,omitempty"`
-		Meta    MetaResponse `json:"meta,omitempty"`
-	}
+			res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
 
-	var verifyCode string
-	s.Run("phase 1 sign up", func() {
-		payload, _ := json.WriteJSON(map[string]any{
-			"email":        s.testUser.Email,
-			"account_type": s.testUser.AccountType,
-			"reg_stage":    s.testUser.RegStage,
+			s.NoError(err)
+			s.Equal(http.StatusOK, res.StatusCode)
+
+			defer res.Body.Close()
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.NotEmpty(respBody.Data.User)
+			s.Equal(s.testUser.Email, respBody.Data.User.Email)
+			s.NotEmpty(respBody.Data.Code)
+
+			verifyCode = respBody.Data.Code
 		})
 
-		res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
+		s.Run("should verify email", func() {
+			payload, _ := json.WriteJSON(map[string]any{
+				"email":    s.testUser.Email,
+				"code":     verifyCode,
+				"otp_type": "EMAIL",
+			})
 
-		s.NoError(err)
-		s.Equal(http.StatusOK, res.StatusCode)
+			res, err := post(url+"/verify-code", contentType, bytes.NewBuffer(payload))
 
-		defer res.Body.Close()
-		respBody := new(Response)
-		_ = json.ReadJSON(res.Body, respBody)
+			s.NoError(err)
+			s.Equal(http.StatusOK, res.StatusCode)
 
-		s.NotEmpty(respBody.Data.User)
-		s.Equal(s.testUser.Email, respBody.Data.User.Email)
-		s.NotEmpty(respBody.Data.Code)
+			defer res.Body.Close()
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
 
-		verifyCode = respBody.Data.Code
+			s.Equal("email verified successfully", respBody.Message)
+		})
+
+		s.Run("phase 2 sign up", func() {
+			payload, _ := json.WriteJSON(map[string]any{
+				"email":        s.testUser.Email,
+				"reg_stage":    2,
+				"phone_number": s.testUser.PhoneNumber,
+			})
+
+			res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
+
+			s.NoError(err)
+			s.Equal(http.StatusOK, res.StatusCode)
+
+			defer res.Body.Close()
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.Equal(2, respBody.Data.User.RegStage)
+			s.NotEmpty(respBody.Data.Code)
+
+			verifyCode = respBody.Data.Code
+		})
+
+		s.Run("should verify phone", func() {
+			payload, _ := json.WriteJSON(map[string]any{
+				"email":    s.testUser.Email,
+				"code":     verifyCode,
+				"otp_type": "SMS",
+			})
+
+			res, err := post(url+"/verify-code", contentType, bytes.NewBuffer(payload))
+
+			s.NoError(err)
+			s.Equal(http.StatusOK, res.StatusCode)
+
+			defer res.Body.Close()
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.Equal("phone number verified successfully", respBody.Message)
+		})
+
+		s.Run("phase 3 sign up", func() {
+			payload, _ := json.WriteJSON(map[string]any{
+				"email":      s.testUser.Email,
+				"first_name": s.testUser.FirstName,
+				"last_name":  s.testUser.LastName,
+				"password":   s.password,
+				"reg_stage":  3,
+			})
+
+			res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
+
+			s.NoError(err)
+			s.Equal(http.StatusOK, res.StatusCode)
+
+			defer res.Body.Close()
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.NotEmpty(respBody.Meta.AccessToken)
+			s.NotEmpty(respBody.Meta.RefreshToken)
+			s.Equal(3, respBody.Data.User.RegStage)
+			s.Equal(s.testUser.FirstName, respBody.Data.User.FirstName)
+		})
+
+		s.Run("expects account exists error", func() {
+			payload, _ := json.WriteJSON(map[string]any{
+				"email":        s.testUser.Email,
+				"account_type": s.testUser.AccountType,
+				"reg_stage":    s.testUser.RegStage,
+			})
+
+			res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
+
+			s.NoError(err)
+			s.Equal(http.StatusBadRequest, res.StatusCode)
+
+			defer res.Body.Close()
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.Equal(false, respBody.Success)
+			s.Equal("account already exists", respBody.Message)
+		})
+
+		s.Run("phase 1 sign up for business", func() {
+			payload, _ := json.WriteJSON(map[string]any{
+				"email":         s.testBusiness.Email,
+				"account_type":  "business",
+				"reg_stage":     1,
+				"business_name": s.testBusiness.Name,
+			})
+
+			res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
+			s.NoError(err)
+			s.Equal(http.StatusOK, res.StatusCode)
+
+			defer res.Body.Close()
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.NotEmpty(respBody.Data.User)
+			s.Equal(s.testBusiness.Email, respBody.Data.User.Email)
+			s.NotEmpty(respBody.Data.Code)
+		})
 	})
 
-	s.Run("should verify email", func() {
-		payload, _ := json.WriteJSON(map[string]any{
-			"email":    s.testUser.Email,
-			"code":     verifyCode,
-			"otp_type": "EMAIL",
+	// test Sign in
+	s.Run("sign in", func() {
+		s.Run("sign in personal account", func() {
+			payload, _ := json.WriteJSON(map[string]any{
+				"email":    s.testUser.Email,
+				"password": s.password,
+			})
+
+			res, err := post(url+"/sign-in", contentType, bytes.NewBuffer(payload))
+			s.NoError(err)
+			s.Equal(http.StatusOK, res.StatusCode)
+
+			defer res.Body.Close()
+
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.NotEmpty(respBody.Meta.AccessToken)
+			s.NotEmpty(respBody.Meta.RefreshToken)
 		})
 
-		res, err := post(url+"/verify-code", contentType, bytes.NewBuffer(payload))
+		s.Run("sign in with wrong password", func() {
+			payload, _ := json.WriteJSON(map[string]any{
+				"email":    s.testUser.Email,
+				"password": "Pa55word",
+			})
 
-		s.NoError(err)
-		s.Equal(http.StatusOK, res.StatusCode)
+			res, err := post(url+"/sign-in", contentType, bytes.NewBuffer(payload))
+			s.NoError(err)
+			s.Equal(http.StatusBadRequest, res.StatusCode)
 
-		defer res.Body.Close()
-		respBody := new(Response)
-		_ = json.ReadJSON(res.Body, respBody)
+			defer res.Body.Close()
 
-		s.Equal("email verified successfully", respBody.Message)
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.Equal("invalid sign in credentials", respBody.Message)
+			s.Empty(respBody.Meta)
+		})
+
+		s.Run("sign in unverified email account", func() {
+			payload, _ := json.WriteJSON(map[string]any{
+				"email":    s.testBusiness.Email,
+				"password": s.password,
+			})
+
+			res, err := post(url+"/sign-in", contentType, bytes.NewBuffer(payload))
+			s.NoError(err)
+			s.Equal(http.StatusForbidden, res.StatusCode)
+
+			defer res.Body.Close()
+
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.Equal("email not verified", respBody.Message)
+			s.Empty(respBody.Meta)
+		})
 	})
 
-	s.Run("phase 2 sign up", func() {
-		payload, _ := json.WriteJSON(map[string]any{
-			"email":        s.testUser.Email,
-			"reg_stage":    2,
-			"phone_number": s.testUser.PhoneNumber,
-		})
+	// test forgot and reset password
+	s.Run("reset and forgot password", func() {
+		s.Run("forgot password", func() {})
 
-		res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
-
-		s.NoError(err)
-		s.Equal(http.StatusOK, res.StatusCode)
-
-		defer res.Body.Close()
-		respBody := new(Response)
-		_ = json.ReadJSON(res.Body, respBody)
-
-		s.Equal(2, respBody.Data.User.RegStage)
-		s.NotEmpty(respBody.Data.Code)
-
-		verifyCode = respBody.Data.Code
-	})
-
-	s.Run("should verify phone", func() {
-		payload, _ := json.WriteJSON(map[string]any{
-			"email":    s.testUser.Email,
-			"code":     verifyCode,
-			"otp_type": "SMS",
-		})
-
-		res, err := post(url+"/verify-code", contentType, bytes.NewBuffer(payload))
-
-		s.NoError(err)
-		s.Equal(http.StatusOK, res.StatusCode)
-
-		defer res.Body.Close()
-		respBody := new(Response)
-		_ = json.ReadJSON(res.Body, respBody)
-
-		s.Equal("phone number verified successfully", respBody.Message)
-	})
-
-	s.Run("phase 3 sign up", func() {
-		payload, _ := json.WriteJSON(map[string]any{
-			"email":      s.testUser.Email,
-			"first_name": s.testUser.FirstName,
-			"last_name":  s.testUser.LastName,
-			"password":   s.password,
-			"reg_stage":  3,
-		})
-
-		res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
-
-		s.NoError(err)
-		s.Equal(http.StatusOK, res.StatusCode)
-
-		defer res.Body.Close()
-		respBody := new(Response)
-		_ = json.ReadJSON(res.Body, respBody)
-
-		s.NotEmpty(respBody.Meta.AccessToken)
-		s.NotEmpty(respBody.Meta.RefreshToken)
-		s.Equal(3, respBody.Data.User.RegStage)
-		s.Equal(s.testUser.FirstName, respBody.Data.User.FirstName)
-	})
-
-	s.Run("expects account exists error", func() {
-		payload, _ := json.WriteJSON(map[string]any{
-			"email":        s.testUser.Email,
-			"account_type": s.testUser.AccountType,
-			"reg_stage":    s.testUser.RegStage,
-		})
-
-		res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
-
-		s.NoError(err)
-		s.Equal(http.StatusBadRequest, res.StatusCode)
-
-		defer res.Body.Close()
-		respBody := new(Response)
-		_ = json.ReadJSON(res.Body, respBody)
-
-		s.Equal(false, respBody.Success)
-		s.Equal("account already exists", respBody.Message)
-	})
-
-	s.Run("phase 1 sign up for business", func() {
-		payload, _ := json.WriteJSON(map[string]any{
-			"email":         s.testBusiness.Email,
-			"account_type":  "business",
-			"reg_stage":     1,
-			"business_name": s.testBusiness.Name,
-		})
-
-		res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
-		s.NoError(err)
-		s.Equal(http.StatusOK, res.StatusCode)
-
-		defer res.Body.Close()
-		respBody := new(Response)
-		_ = json.ReadJSON(res.Body, respBody)
-
-		s.Equal(http.StatusOK, res.StatusCode)
-		s.NotEmpty(respBody.Data.User)
-		s.Equal(s.testBusiness.Email, respBody.Data.User.Email)
-		s.NotEmpty(respBody.Data.Code)
+		s.Run("reset password", func() {})
 	})
 }
-
-// func (s *AuthHandlerTestSuite) TestSignupBusiness() {
-// 	// phase 1 sign up
-// 	// verify email
-// 	s.Run("Phase 1 sign up", func() {
-
-// 	})
-
-// 	// phase 2 sign up
-// 	// verify phone number
-
-// 	// phase 3 sign up
-// }
-
-// func (s *AuthHandlerTestSuite) TestSignin() {}
-
-// func (s *AuthHandlerTestSuite) TestResetPassword() {}
 
 func TestAuthHandlersSuite(t *testing.T) {
 	suite.Run(t, &AuthHandlerTestSuite{})

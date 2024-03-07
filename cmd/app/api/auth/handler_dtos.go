@@ -20,3 +20,8 @@ type verifyCodeDto struct {
 	Code    string `json:"code" validate:"required,len=4"`
 	OtpType string `json:"otp_type" validate:"required,oneof=SMS EMAIL"`
 }
+
+type signInDto struct {
+	Email    string `json:"email" validate:"required"`
+	Password string `json:"password" validate:"required,min=8"`
+}

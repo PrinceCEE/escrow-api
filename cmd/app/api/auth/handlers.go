@@ -18,6 +18,7 @@ import (
 	"github.com/Bupher-Co/bupher-api/pkg/validator"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -40,6 +41,8 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 	env := h.c.Getenv("ENVIRONMENT")
 
 	err := json.ReadJSON(r.Body, body)
+	defer r.Body.Close()
+
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -310,27 +313,17 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		accessTokenStr, err := jwt.GenerateToken(&jwt.TokenClaims{
+		accessTokenStr, _ := jwt.GenerateToken(&jwt.TokenClaims{
 			UserID:    user.ID.String(),
 			Email:     user.Email,
 			TokenType: string(models.AccessToken),
 		})
-		if err != nil {
-			resp.Message = err.Error()
-			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
-			return
-		}
 
-		refreshTokenStr, err := jwt.GenerateToken(&jwt.TokenClaims{
+		refreshTokenStr, _ := jwt.GenerateToken(&jwt.TokenClaims{
 			UserID:    user.ID.String(),
 			Email:     user.Email,
 			TokenType: string(models.RefreshToken),
 		})
-		if err != nil {
-			resp.Message = err.Error()
-			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
-			return
-		}
 
 		accessToken := &models.Token{
 			Hash:      accessTokenStr,
@@ -378,8 +371,108 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *authHandler) signIn(w http.ResponseWriter, r *http.Request) {
-	resp := response.ApiResponse{Message: "not implemented"}
-	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
+	resp := response.ApiResponse{}
+	body := new(signInDto)
+
+	err := json.ReadJSON(r.Body, body)
+	defer r.Body.Close()
+
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.c.GetUserRepository().GetByEmail(body.Email, nil)
+	if err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			resp.Message = "account doesn't exist"
+		default:
+			resp.Message = err.Error()
+		}
+
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	if !user.IsEmailVerified {
+		resp.Message = "email not verified"
+		response.SendErrorResponse(w, resp, http.StatusForbidden)
+		return
+	}
+	if !user.IsPhoneNumberVerified {
+		resp.Message = "phone number not verified"
+		response.SendErrorResponse(w, resp, http.StatusForbidden)
+		return
+	}
+
+	auth, err := h.c.GetAuthRepository().GetByUserId(user.ID.String(), nil)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	err = utils.ComparePassword(body.Password, auth.Password)
+	if err != nil {
+		switch {
+		case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword):
+			resp.Message = "invalid sign in credentials"
+		default:
+			resp.Message = err.Error()
+		}
+
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	accessTokenStr, _ := jwt.GenerateToken(&jwt.TokenClaims{
+		UserID:    user.ID.String(),
+		Email:     user.Email,
+		TokenType: string(models.AccessToken),
+	})
+
+	refreshTokenStr, _ := jwt.GenerateToken(&jwt.TokenClaims{
+		UserID:    user.ID.String(),
+		Email:     user.Email,
+		TokenType: string(models.RefreshToken),
+	})
+
+	accessToken := &models.Token{
+		Hash:      accessTokenStr,
+		UserID:    user.ID,
+		InUse:     true,
+		TokenType: models.AccessToken,
+	}
+	refreshToken := &models.Token{
+		Hash:      refreshTokenStr,
+		UserID:    user.ID,
+		InUse:     true,
+		TokenType: models.RefreshToken,
+	}
+
+	err = h.c.GetTokenRepository().Create(accessToken, nil)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	err = h.c.GetTokenRepository().Create(refreshToken, nil)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	resp.Message = "signed in successfully"
+	resp.Meta = response.ApiResponseMeta{
+		AccessToken:  &accessTokenStr,
+		RefreshToken: &refreshTokenStr,
+	}
+
+	response.SendResponse(w, resp)
 }
 
 func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
@@ -387,6 +480,8 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 	body := new(verifyCodeDto)
 
 	err := json.ReadJSON(r.Body, body)
+	defer r.Body.Close()
+
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
