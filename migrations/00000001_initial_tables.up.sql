@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS businesses (
 CREATE TABLE IF NOT EXISTS auths (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES users NOT NULL,
-  password BYTEA NOT NULL,
+  password TEXT NOT NULL,
   password_history JSON DEFAULT '[]',
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL,

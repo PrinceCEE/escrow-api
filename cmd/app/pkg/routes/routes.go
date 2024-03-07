@@ -55,7 +55,11 @@ func GetRouter(c config.IConfig) chi.Router {
 
 	r.Use(httprate.LimitByIP(100, 1*time.Minute))
 	r.Use(middleware.CleanPath)
-	r.Use(middleware.Logger)
+
+	if c.Getenv("ENVIRONMENT") != "test" {
+		r.Use(middleware.Logger)
+	}
+
 	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(middleware.Recoverer)
 	r.Mount("/api/v1", apiRouter)

@@ -3,6 +3,7 @@ package test_utils
 import (
 	"context"
 	"net/http/httptest"
+	"time"
 
 	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/routes"
 	"github.com/Bupher-Co/bupher-api/config"
@@ -16,7 +17,7 @@ const setupTypesSql = `
 	CREATE TYPE EVENT_ENVIRONMENT_ENUM AS ENUM ('app_environment', 'push_environment', 'job_environment');
 	CREATE TYPE EVENT_TYPE_ENUM AS ENUM ('sms', 'email');
 	CREATE TYPE TOKEN_TYPE_ENUM AS ENUM ('access_token', 'refresh_token');
-	CREATE TYPE OTP_TYPE AS ENUM ('SMS', 'EMAIL');
+	CREATE TYPE OTP_TYPE AS ENUM ('sms', 'email', 'reset_password');
 
 	CREATE TABLE IF NOT EXISTS users (
 		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -47,8 +48,8 @@ const setupTypesSql = `
 
 	CREATE TABLE IF NOT EXISTS auths (
 		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-		user_id UUID REFERENCES users NOT NULL,
-		password BYTEA NOT NULL,
+		user_id UUID REFERENCES users NOT NULL UNIQUE,
+		password TEXT NOT NULL,
 		password_history JSON DEFAULT '[]',
 		created_at TIMESTAMPTZ NOT NULL,
 		updated_at TIMESTAMPTZ NOT NULL,
@@ -138,4 +139,31 @@ func (ts *TestServer) DropTablesAndTypes() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+type TestModelMixin struct {
+	ID        string    `json:"id,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	DeletedAt time.Time `json:"deleted_at,omitempty"`
+	Version   int64     `json:"version,omitempty"`
+}
+
+type TestUser struct {
+	TestModelMixin
+	Email                 string `json:"email,omitempty"`
+	PhoneNumber           string `json:"phone_number,omitempty"`
+	FirstName             string `json:"first_name,omitempty"`
+	LastName              string `json:"last_name,omitempty"`
+	IsPhoneNumberVerified bool   `json:"is_phone_number_verified,omitempty"`
+	IsEmailVerified       bool   `json:"is_email_verified,omitempty"`
+	RegStage              int    `json:"reg_stage,omitempty"`
+	AccountType           string `json:"account_type,omitempty"`
+}
+
+type TestBussiness struct {
+	UserID string `json:"user_id,omitempty"`
+	Name   string `json:"name,omitempty"`
+	Email  string `json:"email,omitempty"`
+	TestModelMixin
 }

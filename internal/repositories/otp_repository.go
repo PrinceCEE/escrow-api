@@ -13,8 +13,8 @@ import (
 )
 
 type IOtpRepository interface {
-	Create(b *models.Otp, tx pgx.Tx) error
-	Update(b *models.Otp, tx pgx.Tx) error
+	Create(otp *models.Otp, tx pgx.Tx) error
+	Update(otp *models.Otp, tx pgx.Tx) error
 	GetById(id string, tx pgx.Tx) (*models.Otp, error)
 	Delete(id string, tx pgx.Tx) error
 	SoftDelete(id string, tx pgx.Tx) error

@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	SmsOtpType   = "SMS"
-	EmailOtpType = "EMAIL"
-	OtpExpiresIn = 10 // 10 minutes
+	SmsOtpType        = "sms"
+	EmailOtpType      = "email"
+	ResetPasswordType = "reset_password"
+	OtpExpiresIn      = 10 // 10 minutes
 )
 
 type Otp struct {

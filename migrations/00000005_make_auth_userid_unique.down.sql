@@ -1,0 +1,1 @@
+ALTER TABLE auths DROP CONSTRAINT unique_user_id;

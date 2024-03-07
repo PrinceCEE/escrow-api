@@ -19,3 +19,12 @@ func ReadJSON(b io.ReadCloser, dst any) error {
 func WriteJSON(data any) ([]byte, error) {
 	return json.MarshalIndent(data, "", "    ")
 }
+
+func MarshalIndent(v any) (string, error) {
+	js, err := json.MarshalIndent(v, "", "    ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(js), nil
+}

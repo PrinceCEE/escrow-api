@@ -31,6 +31,10 @@ func (r *TestAuthRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error)
 	return r.repo.GetById(id, tx)
 }
 
+func (r *TestAuthRepository) GetByUserId(id string, tx pgx.Tx) (*models.Auth, error) {
+	return r.repo.GetByUserId(id, tx)
+}
+
 func (r *TestAuthRepository) Delete(id string, tx pgx.Tx) (err error) {
 	return r.repo.Delete(id, tx)
 }

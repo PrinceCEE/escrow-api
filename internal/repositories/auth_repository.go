@@ -17,6 +17,7 @@ type IAuthRepository interface {
 	GetById(id string, tx pgx.Tx) (*models.Auth, error)
 	Delete(id string, tx pgx.Tx) error
 	SoftDelete(id string, tx pgx.Tx) error
+	GetByUserId(id string, tx pgx.Tx) (*models.Auth, error)
 }
 
 type AuthRepository struct {
@@ -87,6 +88,50 @@ func (repo *AuthRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) 
 		FROM
 			auths
 		WHERE id = $1
+	`
+
+	var row pgx.Row
+	if tx != nil {
+		row = tx.QueryRow(ctx, query, id)
+	} else {
+		row = repo.DB.QueryRow(ctx, query, id)
+	}
+
+	err := row.Scan(
+		&a.ID,
+		&a.UserID,
+		&a.Password,
+		&a.PasswordHistory,
+		&a.CreatedAt,
+		&a.UpdatedAt,
+		&a.DeletedAt,
+		&a.Version,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return a, nil
+}
+
+func (repo *AuthRepository) GetByUserId(id string, tx pgx.Tx) (*models.Auth, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
+	defer cancel()
+
+	a := new(models.Auth)
+	query := `
+		SELECT
+			id,
+			user_id,
+			password,
+			password_history,
+			created_at,
+			updated_at,
+			deleted_at,
+			version
+		FROM
+			auths
+		WHERE user_id = $1
 	`
 
 	var row pgx.Row
