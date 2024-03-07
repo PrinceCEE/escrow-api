@@ -21,8 +21,8 @@ migration/down:
 	@echo "running migration"
 	migrate -path ./migrations -database ${DSN} down
 
-.PHONY: run-tests
-run-tests:
+.PHONY: tests
+tests:
 	@clear
 	@echo "running e2e tests"
 	go test -v ./tests

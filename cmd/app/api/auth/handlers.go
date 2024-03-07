@@ -37,6 +37,7 @@ type authHandler struct {
 func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 	body := new(signUpDto)
 	resp := response.ApiResponse{}
+	env := h.c.Getenv("ENVIRONMENT")
 
 	err := json.ReadJSON(r.Body, body)
 	if err != nil {
@@ -94,7 +95,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 				})
 
 				resp.Message = RegStage1Msg
-				if h.c.Getenv("ENVIRONMENT") == "development" {
+				if env == "development" || env == "test" {
 					resp.Data = map[string]any{
 						"code": otp.Code,
 						"user": user,
@@ -134,7 +135,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 				})
 
 				resp.Message = RegStage2Msg
-				if h.c.Getenv("ENVIRONMENT") == "development" {
+				if env == "development" || env == "test" {
 					resp.Data = map[string]any{
 						"code": otp.Code,
 						"user": user,
@@ -225,7 +226,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 
 		resp.Message = RegStage1Msg
 
-		if h.c.Getenv("ENVIRONMENT") == "development" {
+		if env == "development" || env == "test" {
 			resp.Data = map[string]any{
 				"code": otp.Code,
 				"user": user,
@@ -268,7 +269,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		})
 
 		resp.Message = RegStage2Msg
-		if h.c.Getenv("ENVIRONMENT") == "development" {
+		if env == "development" || env == "test" {
 			resp.Data = map[string]any{
 				"code": otp.Code,
 				"user": user,

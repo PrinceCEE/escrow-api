@@ -2,11 +2,12 @@ package test_config
 
 import (
 	"context"
-	"os"
+	"io"
 	"time"
 
 	"github.com/Bupher-Co/bupher-api/config"
 	"github.com/Bupher-Co/bupher-api/internal/repositories"
+	"github.com/Bupher-Co/bupher-api/pkg/push"
 	"github.com/Bupher-Co/bupher-api/tests/utils/mocks/test_repositories"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
@@ -23,8 +24,19 @@ type TestConfig struct {
 	DB                 *pgxpool.Pool
 	RedisClient        *config.RedisClient
 	Logger             *config.Logger
+	Push               push.IPush
 	mock.Mock
 }
+
+type TestPush struct {
+	mock.Mock
+}
+
+func (p *TestPush) SendEmail(data *push.Email) error {
+	return nil
+}
+
+func (p *TestPush) SendSMS(data *push.Sms) {}
 
 func NewTestConfig() *TestConfig {
 	dbConfig, err := pgxpool.ParseConfig("postgres://postgres:password@localhost/bupher_test?sslmode=disable")
@@ -40,7 +52,7 @@ func NewTestConfig() *TestConfig {
 	timeout := 10 * time.Second
 	return &TestConfig{
 		Logger: config.NewLogger(
-			zerolog.New(os.Stderr).Level(zerolog.DebugLevel).With().Timestamp().Logger(),
+			zerolog.New(io.Discard).Level(zerolog.DebugLevel).With().Timestamp().Logger(),
 			zerolog.DebugLevel,
 		),
 		RedisClient:        &config.RedisClient{},
@@ -51,11 +63,19 @@ func NewTestConfig() *TestConfig {
 		OtpRepository:      test_repositories.NewOtpRepository(pool, timeout),
 		TokenRepository:    test_repositories.NewTokenRepository(pool, timeout),
 		UserRepository:     test_repositories.NewUserRepository(pool, timeout),
+		Push:               &TestPush{},
 	}
 }
 
 func (c *TestConfig) Getenv(key string) string {
-	return os.Getenv(key)
+	switch key {
+	case "ENVIRONMENT":
+		return "test"
+	case "JWT_KEY":
+		return "somerandomjwtkey"
+	default:
+		return ""
+	}
 }
 
 func (c *TestConfig) GetAuthRepository() repositories.IAuthRepository {
@@ -92,4 +112,8 @@ func (c *TestConfig) GetRedisClient() *config.RedisClient {
 
 func (c *TestConfig) GetLogger() *config.Logger {
 	return c.Logger
+}
+
+func (c *TestConfig) GetPush() push.IPush {
+	return &push.Push{}
 }
