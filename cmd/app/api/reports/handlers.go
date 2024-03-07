@@ -8,7 +8,7 @@ import (
 )
 
 type reportHandler struct {
-	c *config.Config
+	c config.IConfig
 }
 
 func (h *reportHandler) reportTransaction(w http.ResponseWriter, r *http.Request) {

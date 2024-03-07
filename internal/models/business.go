@@ -5,8 +5,8 @@ import (
 )
 
 type Business struct {
-	UserID uuid.UUID `json:"user_id"`
-	Name   string    `json:"name"`
-	Email  string    `json:"email"`
+	UserID uuid.UUID `json:"user_id" db:"user_id"`
+	Name   string    `json:"name" db:"name"`
+	Email  string    `json:"email" db:"email"`
 	ModelMixin
 }

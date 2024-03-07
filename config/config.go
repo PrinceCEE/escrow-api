@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Bupher-Co/bupher-api/internal/repositories"
+	"github.com/Bupher-Co/bupher-api/pkg/push"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
@@ -17,86 +18,8 @@ type Logger struct {
 	level zerolog.Level
 }
 
-type Config struct {
-	Repositories
-	DB          *pgxpool.Pool
-	Env         Env
-	RedisClient *redisClient
-	Logger      Logger
-}
-
-type Env struct {
-	PORT           string
-	DSN            string
-	REDIS_URL      string
-	EMAIL_USERNAME string
-	EMAIL_PASSWORD string
-	ENVIRONMENT    string
-	JWT_KEY        string
-}
-
-func (e *Env) IsDevelopment() bool {
-	return e.ENVIRONMENT == "development"
-}
-
-func (e *Env) IsProduction() bool {
-	return e.ENVIRONMENT == "production"
-}
-
-func NewConfig() *Config {
-	var environment, loglevel string
-
-	flag.StringVar(&environment, "env", "development", "The environment of the app(development/production)")
-	flag.StringVar(&loglevel, "loglevel", "debug", "The logger log level")
-	flag.Parse()
-
-	if environment == "development" {
-		if err := godotenv.Load(); err != nil {
-			panic(err)
-		}
-	}
-
-	level := getLoggerLevel(loglevel)
-	logger := Logger{
-		l:     zerolog.New(os.Stderr).Level(level).With().Timestamp().Logger(),
-		level: level,
-	}
-
-	env := Env{
-		PORT:           os.Getenv("PORT"),
-		DSN:            os.Getenv("DSN"),
-		REDIS_URL:      os.Getenv("REDIS_URL"),
-		EMAIL_USERNAME: os.Getenv("EMAIL_USERNAME"),
-		EMAIL_PASSWORD: os.Getenv("EMAIL_PASSWORD"),
-		ENVIRONMENT:    os.Getenv("ENVIRONMENT"),
-		JWT_KEY:        os.Getenv("JWT_KEY"),
-	}
-
-	dbpool, err := configureDB(env.DSN)
-	if err != nil {
-		logger.Log(zerolog.PanicLevel, "error connecting to the db", nil, err)
-	}
-
-	rclient, err := newRedisClient(env)
-	if err != nil {
-		logger.Log(zerolog.PanicLevel, "error instantiating redis client", nil, err)
-	}
-
-	timeout := 10 * time.Second
-	return &Config{
-		DB:          dbpool,
-		Env:         env,
-		Logger:      logger,
-		RedisClient: rclient,
-		Repositories: Repositories{
-			AuthRepository:     repositories.NewAuthRepository(dbpool, timeout),
-			BusinessRepository: repositories.NewBusinessRepository(dbpool, timeout),
-			EventRepository:    repositories.NewEventRepository(dbpool, timeout),
-			TokenRepository:    repositories.NewTokenRepository(dbpool, timeout),
-			UserRepository:     repositories.NewUserRepository(dbpool, timeout),
-			OtpRepository:      repositories.NewOtpRepository(dbpool, timeout),
-		},
-	}
+func NewLogger(l zerolog.Logger, level zerolog.Level) *Logger {
+	return &Logger{l, level}
 }
 
 func getLoggerLevel(loglevel string) zerolog.Level {
@@ -161,4 +84,119 @@ func (logger *Logger) Log(level zerolog.Level, msg string, data map[string]any, 
 	}
 
 	lEvent.Msg(msg)
+}
+
+type IConfig interface {
+	Getenv(key string) string
+	GetAuthRepository() repositories.IAuthRepository
+	GetBusinessRepository() repositories.IBusinessRepository
+	GetEventRepository() repositories.IEventRepository
+	GetOtpRepository() repositories.IOtpRepository
+	GetTokenRepository() repositories.ITokenRepository
+	GetUserRepository() repositories.IUserRepository
+	GetDB() *pgxpool.Pool
+	GetRedisClient() *RedisClient
+	GetLogger() *Logger
+	GetPush() push.IPush
+}
+
+type Config struct {
+	AuthRepository     repositories.IAuthRepository
+	BusinessRepository repositories.IBusinessRepository
+	EventRepository    repositories.IEventRepository
+	OtpRepository      repositories.IOtpRepository
+	TokenRepository    repositories.ITokenRepository
+	UserRepository     repositories.IUserRepository
+	DB                 *pgxpool.Pool
+	RedisClient        *RedisClient
+	Logger             *Logger
+	Push               push.IPush
+}
+
+func NewConfig() *Config {
+	var environment, loglevel string
+
+	flag.StringVar(&environment, "env", "development", "The environment of the app(development/production)")
+	flag.StringVar(&loglevel, "loglevel", "debug", "The logger log level")
+	flag.Parse()
+
+	if environment == "development" {
+		if err := godotenv.Load(); err != nil {
+			panic(err)
+		}
+	}
+
+	level := getLoggerLevel(loglevel)
+	logger := NewLogger(
+		zerolog.New(os.Stderr).Level(level).With().Timestamp().Logger(),
+		level,
+	)
+
+	dbpool, err := configureDB(os.Getenv("DSN"))
+	if err != nil {
+		logger.Log(zerolog.PanicLevel, "error connecting to the db", nil, err)
+	}
+
+	rclient, err := NewRedisClient(os.Getenv("REDIS_URL"))
+	if err != nil {
+		logger.Log(zerolog.PanicLevel, "error instantiating redis client", nil, err)
+	}
+
+	timeout := 10 * time.Second
+	return &Config{
+		DB:                 dbpool,
+		Logger:             logger,
+		RedisClient:        rclient,
+		AuthRepository:     repositories.NewAuthRepository(dbpool, timeout),
+		BusinessRepository: repositories.NewBusinessRepository(dbpool, timeout),
+		EventRepository:    repositories.NewEventRepository(dbpool, timeout),
+		TokenRepository:    repositories.NewTokenRepository(dbpool, timeout),
+		UserRepository:     repositories.NewUserRepository(dbpool, timeout),
+		OtpRepository:      repositories.NewOtpRepository(dbpool, timeout),
+		Push:               &push.Push{},
+	}
+}
+
+func (c *Config) Getenv(key string) string {
+	return os.Getenv(key)
+}
+
+func (c *Config) GetAuthRepository() repositories.IAuthRepository {
+	return c.AuthRepository
+}
+
+func (c *Config) GetBusinessRepository() repositories.IBusinessRepository {
+	return c.BusinessRepository
+}
+
+func (c *Config) GetEventRepository() repositories.IEventRepository {
+	return c.EventRepository
+}
+
+func (c *Config) GetOtpRepository() repositories.IOtpRepository {
+	return c.OtpRepository
+}
+
+func (c *Config) GetTokenRepository() repositories.ITokenRepository {
+	return c.TokenRepository
+}
+
+func (c *Config) GetUserRepository() repositories.IUserRepository {
+	return c.UserRepository
+}
+
+func (c *Config) GetDB() *pgxpool.Pool {
+	return c.DB
+}
+
+func (c *Config) GetRedisClient() *RedisClient {
+	return c.RedisClient
+}
+
+func (c *Config) GetLogger() *Logger {
+	return c.Logger
+}
+
+func (c *Config) GetPush() push.IPush {
+	return &push.Push{}
 }

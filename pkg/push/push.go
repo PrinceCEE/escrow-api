@@ -1,11 +1,19 @@
 package push
 
 import (
+	"fmt"
 	"net/smtp"
 	"os"
 
 	"github.com/jordan-wright/email"
 )
+
+type IPush interface {
+	SendSMS(data *Sms)
+	SendEmail(data *Email) error
+}
+
+type Push struct{}
 
 const (
 	ErrSendingEmailMsg = "error sending email"
@@ -19,15 +27,18 @@ type Email struct {
 	Html    string
 }
 
-func SendEmail(data *Email) error {
+func (p *Push) SendEmail(data *Email) error {
 	username := os.Getenv("EMAIL_USERNAME")
 	password := os.Getenv("EMAIL_PASSWORD")
+	from := os.Getenv("EMAIL_FROM")
+	port := os.Getenv("EMAIL_PORT")
+	host := os.Getenv("EMAIL_HOST")
 
 	e := email.NewEmail()
 	if data.From != "" {
 		e.From = data.From
 	} else {
-		e.From = username
+		e.From = from
 	}
 
 	e.To = data.To
@@ -36,12 +47,12 @@ func SendEmail(data *Email) error {
 	e.HTML = []byte(data.Html)
 
 	err := e.Send(
-		"smtp.gmail.com:587",
+		fmt.Sprintf("%s:%s", host, port),
 		smtp.PlainAuth(
 			"",
 			username,
 			password,
-			"smtp.gmail.com",
+			host,
 		),
 	)
 
@@ -51,3 +62,10 @@ func SendEmail(data *Email) error {
 
 	return nil
 }
+
+type Sms struct {
+	Phone   string
+	Message string
+}
+
+func (p *Push) SendSMS(data *Sms) {}

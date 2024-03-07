@@ -15,8 +15,7 @@ type TokenClaims struct {
 }
 
 func GenerateToken(t *TokenClaims) (string, error) {
-	key := os.Getenv("JWT_KEY")
-
+	key := []byte(os.Getenv("JWT_KEY"))
 	t.IssuedAt = jwt.NewNumericDate(time.Now())
 	t.Issuer = "bupherco"
 	t.Subject = t.UserID
@@ -32,10 +31,10 @@ func GenerateToken(t *TokenClaims) (string, error) {
 }
 
 func VerifyToken(tokenStr string) (*TokenClaims, error) {
-	key := os.Getenv("JWT_KEY")
+	key := []byte(os.Getenv("JWT_KEY"))
 
 	token, err := jwt.ParseWithClaims(tokenStr, &TokenClaims{}, func(t *jwt.Token) (interface{}, error) {
-		return []byte(key), nil
+		return key, nil
 	})
 
 	if err != nil {

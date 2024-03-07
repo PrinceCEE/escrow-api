@@ -5,7 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func UsersRouter(c *config.Config) chi.Router {
+func UsersRouter(c config.IConfig) chi.Router {
 	h := userHandler{c}
 	r := chi.NewRouter()
 

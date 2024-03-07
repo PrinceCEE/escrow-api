@@ -5,7 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func AuthRouter(c *config.Config) chi.Router {
+func AuthRouter(c config.IConfig) chi.Router {
 	h := authHandler{c}
 	r := chi.NewRouter()
 

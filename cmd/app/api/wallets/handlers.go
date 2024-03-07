@@ -8,7 +8,7 @@ import (
 )
 
 type walletHandler struct {
-	c *config.Config
+	c config.IConfig
 }
 
 func (h *walletHandler) addBankAccount(w http.ResponseWriter, r *http.Request) {

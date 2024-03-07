@@ -12,8 +12,8 @@ type PasswordHistory struct {
 }
 
 type Auth struct {
-	UserID          uuid.UUID         `json:"user_id"`
-	Password        []byte            `json:"password"`
-	PasswordHistory []PasswordHistory `json:"password_history"`
+	UserID          uuid.UUID         `json:"user_id" db:"user_id"`
+	Password        []byte            `json:"password" db:"password"`
+	PasswordHistory []PasswordHistory `json:"password_history" db:"password_history"`
 	ModelMixin
 }

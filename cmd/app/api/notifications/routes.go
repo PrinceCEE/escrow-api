@@ -5,7 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func NotificationRouter(c *config.Config) chi.Router {
+func NotificationRouter(c config.IConfig) chi.Router {
 	h := notificationHandler{c}
 	r := chi.NewRouter()
 

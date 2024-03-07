@@ -2,11 +2,11 @@ package json
 
 import (
 	"encoding/json"
-	"net/http"
+	"io"
 )
 
-func ReadJSON(r *http.Request, dst any) error {
-	dec := json.NewDecoder(r.Body)
+func ReadJSON(b io.ReadCloser, dst any) error {
+	dec := json.NewDecoder(b)
 	err := dec.Decode(dst)
 
 	if err != nil {

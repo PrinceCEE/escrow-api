@@ -37,13 +37,8 @@ type ApiResponse struct {
 
 func SendResponse(w http.ResponseWriter, b ApiResponse, headers ...map[string]string) {
 	if b.Success == nil {
-		*b.Success = true
-	}
-
-	if b.StatusCode == nil {
-		w.WriteHeader(http.StatusOK)
-	} else {
-		w.WriteHeader(*b.StatusCode)
+		s := true
+		b.Success = &s
 	}
 
 	if len(headers) > 0 {
@@ -53,6 +48,12 @@ func SendResponse(w http.ResponseWriter, b ApiResponse, headers ...map[string]st
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+
+	if b.StatusCode == nil {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(*b.StatusCode)
+	}
 
 	jsonData, err := json.WriteJSON(b)
 	if err != nil {

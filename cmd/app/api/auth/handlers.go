@@ -2,9 +2,11 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
 	"github.com/Bupher-Co/bupher-api/config"
@@ -25,15 +27,19 @@ const (
 	RegStage3Msg       = "sign up successful"
 )
 
+type IConfig interface {
+}
+
 type authHandler struct {
-	c *config.Config
+	c config.IConfig
 }
 
 func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 	body := new(signUpDto)
 	resp := response.ApiResponse{}
+	env := h.c.Getenv("ENVIRONMENT")
 
-	err := json.ReadJSON(r, body)
+	err := json.ReadJSON(r.Body, body)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -49,9 +55,9 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := new(models.User)
-	user, err = h.c.UserRepository.GetByEmail(*body.Email, nil)
+	user, err = h.c.GetUserRepository().GetByEmail(*body.Email, nil)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		resp.Message = response.ErrNotFound.Error()
+		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
 		return
 	}
@@ -61,33 +67,42 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		case int(utils.RegStage1):
 			if !user.IsEmailVerified {
 				otp := &models.Otp{
-					UserID:  user.ID,
-					Code:    utils.GenerateRandomNumber(),
-					IsUsed:  false,
-					OtpType: models.EmailOtpType,
+					UserID:    user.ID,
+					Code:      utils.GenerateRandomNumber(),
+					IsUsed:    false,
+					OtpType:   models.EmailOtpType,
+					ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
 				}
 
-				err = h.c.OtpRepository.Create(otp, nil)
+				err = h.c.GetOtpRepository().Create(otp, nil)
 				if err != nil {
 					resp.Message = err.Error()
 					response.SendErrorResponse(w, resp, http.StatusInternalServerError)
 					return
 				}
 
-				err = push.SendEmail(&push.Email{
-					To:      []string{*user.Email},
-					Subject: VerifyEmailSubject,
-					Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
-					Html:    fmt.Sprintf("<p>Use code %s to verify your email</p>", otp.Code),
+				utils.Background(func() {
+					err = h.c.GetPush().SendEmail(&push.Email{
+						To:      []string{user.Email},
+						Subject: VerifyEmailSubject,
+						Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
+						Html:    fmt.Sprintf("<p>Use code %s to verify your email</p>", otp.Code),
+					})
+
+					if err != nil {
+						h.c.GetLogger().Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
+					}
 				})
-				if err != nil {
-					h.c.Logger.Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
-				}
 
 				resp.Message = RegStage1Msg
-				if h.c.Env.IsDevelopment() {
-					resp.Data = map[string]string{
+				if env == "development" || env == "test" {
+					resp.Data = map[string]any{
 						"code": otp.Code,
+						"user": user,
+					}
+				} else {
+					resp.Data = map[string]any{
+						"user": user,
 					}
 				}
 
@@ -98,27 +113,35 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		case int(utils.RegStage2):
 			if !user.IsPhoneNumberVerified {
 				otp := &models.Otp{
-					UserID:  user.ID,
-					Code:    utils.GenerateRandomNumber(),
-					IsUsed:  false,
-					OtpType: models.SmsOtpType,
+					UserID:    user.ID,
+					Code:      utils.GenerateRandomNumber(),
+					IsUsed:    false,
+					OtpType:   models.SmsOtpType,
+					ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
 				}
 
-				err = h.c.OtpRepository.Create(otp, nil)
+				err = h.c.GetOtpRepository().Create(otp, nil)
 				if err != nil {
 					resp.Message = err.Error()
 					response.SendErrorResponse(w, resp, http.StatusInternalServerError)
 					return
 				}
 
-				push.SendSMS(&push.Sms{
-					Phone:   *user.PhoneNumber,
-					Message: fmt.Sprintf("Use code %s to verify your phone number", otp.Code),
+				utils.Background(func() {
+					h.c.GetPush().SendSMS(&push.Sms{
+						Phone:   user.PhoneNumber.String,
+						Message: fmt.Sprintf("Use code %s to verify your phone number", otp.Code),
+					})
 				})
 
 				resp.Message = RegStage2Msg
-				if h.c.Env.IsDevelopment() {
-					resp.Data = map[string]string{
+				if env == "development" || env == "test" {
+					resp.Data = map[string]any{
+						"code": otp.Code,
+						"user": user,
+					}
+				} else {
+					resp.Data = map[string]any{
 						"code": otp.Code,
 					}
 				}
@@ -134,7 +157,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tx, err := h.c.DB.Begin(context.Background())
+	tx, err := h.c.GetDB().Begin(context.Background())
 	defer tx.Rollback(context.Background())
 
 	if err != nil {
@@ -146,12 +169,12 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 	switch *body.RegStage {
 	case utils.RegStage1:
 		user = &models.User{
-			Email:       body.Email,
+			Email:       *body.Email,
 			AccountType: *body.AccountType,
 			RegStage:    int(*body.RegStage),
 		}
 
-		err := h.c.UserRepository.Create(user, tx)
+		err := h.c.GetUserRepository().Create(user, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -165,7 +188,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 				Email:  *body.Email,
 			}
 
-			err = h.c.BusinessRepository.Create(business, tx)
+			err = h.c.GetBusinessRepository().Create(business, tx)
 			if err != nil {
 				resp.Message = err.Error()
 				response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -174,43 +197,50 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		otp := &models.Otp{
-			UserID:  user.ID,
-			Code:    utils.GenerateRandomNumber(),
-			IsUsed:  false,
-			OtpType: models.EmailOtpType,
+			UserID:    user.ID,
+			Code:      utils.GenerateRandomNumber(),
+			IsUsed:    false,
+			OtpType:   models.EmailOtpType,
+			ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
 		}
-		err = h.c.OtpRepository.Create(otp, tx)
+
+		err = h.c.GetOtpRepository().Create(otp, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
 			return
 		}
 
-		err = push.SendEmail(&push.Email{
-			To:      []string{*user.Email},
-			Subject: VerifyEmailSubject,
-			Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
-			Html:    fmt.Sprintf("<p>Use code %s to verify your email</p>", otp.Code),
+		utils.Background(func() {
+			err = h.c.GetPush().SendEmail(&push.Email{
+				To:      []string{user.Email},
+				Subject: VerifyEmailSubject,
+				Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
+				Html:    fmt.Sprintf("<p>Use code %s to verify your email</p>", otp.Code),
+			})
+
+			if err != nil {
+				h.c.GetLogger().Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
+			}
 		})
-		if err != nil {
-			h.c.Logger.Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
-		}
 
 		resp.Message = RegStage1Msg
 
-		if h.c.Env.IsDevelopment() {
+		if env == "development" || env == "test" {
 			resp.Data = map[string]any{
 				"code": otp.Code,
 				"user": user,
 			}
 		} else {
-			resp.Data = user
+			resp.Data = map[string]any{
+				"user": user,
+			}
 		}
 	case utils.RegStage2:
-		user.PhoneNumber = body.PhoneNumber
+		user.PhoneNumber = models.NullString{NullString: sql.NullString{String: *body.PhoneNumber, Valid: true}}
 		user.RegStage = int(*body.RegStage)
 
-		err = h.c.UserRepository.Update(user, tx)
+		err = h.c.GetUserRepository().Update(user, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -218,45 +248,50 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		otp := &models.Otp{
-			UserID:  user.ID,
-			Code:    utils.GenerateRandomNumber(),
-			IsUsed:  false,
-			OtpType: models.SmsOtpType,
+			UserID:    user.ID,
+			Code:      utils.GenerateRandomNumber(),
+			IsUsed:    false,
+			OtpType:   models.SmsOtpType,
+			ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
 		}
-		err = h.c.OtpRepository.Create(otp, tx)
+		err = h.c.GetOtpRepository().Create(otp, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
 			return
 		}
 
-		push.SendSMS(&push.Sms{
-			Phone:   *user.PhoneNumber,
-			Message: fmt.Sprintf("Use code %s to verify your phone number", otp.Code),
+		utils.Background(func() {
+			h.c.GetPush().SendSMS(&push.Sms{
+				Phone:   user.PhoneNumber.String,
+				Message: fmt.Sprintf("Use code %s to verify your phone number", otp.Code),
+			})
 		})
 
 		resp.Message = RegStage2Msg
-		if h.c.Env.IsDevelopment() {
+		if env == "development" || env == "test" {
 			resp.Data = map[string]any{
 				"code": otp.Code,
 				"user": user,
 			}
 		} else {
-			resp.Data = user
+			resp.Data = map[string]any{
+				"user": user,
+			}
 		}
 	case utils.RegStage3:
-		user.FirstName = *body.FirstName
-		user.LastName = *body.LastName
+		user.FirstName = models.NullString{NullString: sql.NullString{String: *body.FirstName, Valid: true}}
+		user.LastName = models.NullString{NullString: sql.NullString{String: *body.LastName, Valid: true}}
 		user.RegStage = int(*body.RegStage)
 
-		err = h.c.UserRepository.Update(user, tx)
+		err = h.c.GetUserRepository().Update(user, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
 			return
 		}
 
-		hashPwd, err := utils.GenerateHash(*body.Password)
+		hashPwd, err := utils.GeneratePasswordHash(*body.Password)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -268,7 +303,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			Password: hashPwd,
 		}
 
-		err = h.c.AuthRepository.Create(auth, tx)
+		err = h.c.GetAuthRepository().Create(auth, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -277,7 +312,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 
 		accessTokenStr, err := jwt.GenerateToken(&jwt.TokenClaims{
 			UserID:    user.ID.String(),
-			Email:     *user.Email,
+			Email:     user.Email,
 			TokenType: string(models.AccessToken),
 		})
 		if err != nil {
@@ -288,7 +323,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 
 		refreshTokenStr, err := jwt.GenerateToken(&jwt.TokenClaims{
 			UserID:    user.ID.String(),
-			Email:     *user.Email,
+			Email:     user.Email,
 			TokenType: string(models.RefreshToken),
 		})
 		if err != nil {
@@ -297,41 +332,27 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		accessTokenHash, err := utils.GenerateHash(accessTokenStr)
-		if err != nil {
-			resp.Message = err.Error()
-			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
-			return
-		}
-
-		refreshTokenHash, err := utils.GenerateHash(accessTokenStr)
-		if err != nil {
-			resp.Message = err.Error()
-			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
-			return
-		}
-
 		accessToken := &models.Token{
-			Hash:      accessTokenHash,
+			Hash:      accessTokenStr,
 			UserID:    user.ID,
 			InUse:     true,
 			TokenType: models.AccessToken,
 		}
 		refreshToken := &models.Token{
-			Hash:      refreshTokenHash,
+			Hash:      refreshTokenStr,
 			UserID:    user.ID,
 			InUse:     true,
 			TokenType: models.RefreshToken,
 		}
 
-		err = h.c.TokenRepository.Create(accessToken, tx)
+		err = h.c.GetTokenRepository().Create(accessToken, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
 			return
 		}
 
-		err = h.c.TokenRepository.Create(refreshToken, tx)
+		err = h.c.GetTokenRepository().Create(refreshToken, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -339,7 +360,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		resp.Message = RegStage3Msg
-		resp.Data = user
+		resp.Data = map[string]any{"user": user}
 		resp.Meta = response.ApiResponseMeta{
 			AccessToken:  &accessTokenStr,
 			RefreshToken: &refreshTokenStr,
@@ -362,8 +383,99 @@ func (h *authHandler) signIn(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
-	resp := response.ApiResponse{Message: "not implemented"}
-	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
+	resp := response.ApiResponse{}
+	body := new(verifyCodeDto)
+
+	err := json.ReadJSON(r.Body, body)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	validationErrors := validator.ValidateData(body)
+	if validationErrors != nil {
+		resp.Message = response.ErrBadRequest.Error()
+		resp.Data = validationErrors
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.c.GetUserRepository().GetByEmail(body.Email, nil)
+	if err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			resp.Message = response.ErrNotFound.Error()
+		default:
+			resp.Message = err.Error()
+		}
+
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+	tx, err := h.c.GetDB().Begin(ctx)
+	defer tx.Rollback(ctx)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	otp, err := h.c.GetOtpRepository().GetOneByWhere(`
+		WHERE
+			code = $1
+			AND is_used = $2
+			AND user_id = $3
+			AND expires_in >= $4
+	`, []any{body.Code, false, user.ID, time.Now()}, tx)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			resp.Message = "invalid or expired code"
+		default:
+			resp.Message = err.Error()
+		}
+
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	otp.IsUsed = true
+	switch body.OtpType {
+	case "SMS":
+		user.IsPhoneNumberVerified = true
+		resp.Message = "phone number verified successfully"
+	case "EMAIL":
+		user.IsEmailVerified = true
+		resp.Message = "email verified successfully"
+	}
+
+	err = h.c.GetUserRepository().Update(user, tx)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	err = h.c.GetOtpRepository().Update(otp, tx)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	resp.Data = user
+	response.SendResponse(w, resp)
 }
 
 func (h *authHandler) resetPassword(w http.ResponseWriter, r *http.Request) {
