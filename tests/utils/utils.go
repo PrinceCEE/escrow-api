@@ -17,7 +17,7 @@ const setupTypesSql = `
 	CREATE TYPE EVENT_ENVIRONMENT_ENUM AS ENUM ('app_environment', 'push_environment', 'job_environment');
 	CREATE TYPE EVENT_TYPE_ENUM AS ENUM ('sms', 'email');
 	CREATE TYPE TOKEN_TYPE_ENUM AS ENUM ('access_token', 'refresh_token');
-	CREATE TYPE OTP_TYPE AS ENUM ('SMS', 'EMAIL');
+	CREATE TYPE OTP_TYPE AS ENUM ('sms', 'email', 'reset_password');
 
 	CREATE TABLE IF NOT EXISTS users (
 		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -49,7 +49,7 @@ const setupTypesSql = `
 	CREATE TABLE IF NOT EXISTS auths (
 		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 		user_id UUID REFERENCES users NOT NULL UNIQUE,
-		password BYTEA NOT NULL,
+		password TEXT NOT NULL,
 		password_history JSON DEFAULT '[]',
 		created_at TIMESTAMPTZ NOT NULL,
 		updated_at TIMESTAMPTZ NOT NULL,

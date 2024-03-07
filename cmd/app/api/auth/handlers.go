@@ -303,7 +303,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 
 		auth := &models.Auth{
 			UserID:   user.ID,
-			Password: hashPwd,
+			Password: string(hashPwd),
 		}
 
 		err = h.c.GetAuthRepository().Create(auth, tx)
@@ -414,7 +414,7 @@ func (h *authHandler) signIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = utils.ComparePassword(body.Password, auth.Password)
+	err = utils.ComparePassword(body.Password, []byte(auth.Password))
 	if err != nil {
 		switch {
 		case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword):
@@ -524,7 +524,8 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 			AND is_used = $2
 			AND user_id = $3
 			AND expires_in >= $4
-	`, []any{body.Code, false, user.ID, time.Now()}, tx)
+			AND otp_type = $5
+	`, []any{body.Code, false, user.ID, time.Now(), body.OtpType}, tx)
 
 	if err != nil {
 		switch {
@@ -540,12 +541,14 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 
 	otp.IsUsed = true
 	switch body.OtpType {
-	case "SMS":
+	case "sms":
 		user.IsPhoneNumberVerified = true
 		resp.Message = "phone number verified successfully"
-	case "EMAIL":
+	case "email":
 		user.IsEmailVerified = true
 		resp.Message = "email verified successfully"
+	case "reset_password":
+		resp.Message = "otp verified successfully"
 	}
 
 	err = h.c.GetUserRepository().Update(user, tx)
@@ -574,11 +577,123 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *authHandler) resetPassword(w http.ResponseWriter, r *http.Request) {
-	resp := response.ApiResponse{Message: "not implemented"}
-	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
+	resp := response.ApiResponse{}
+	body := new(forgotPasswordDto)
+	defer r.Body.Close()
+
+	err := json.ReadJSON(r.Body, body)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.c.GetUserRepository().GetByEmail(body.Email, nil)
+	if err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			resp.Message = "user not found"
+		default:
+			resp.Message = err.Error()
+		}
+
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	if !user.IsEmailVerified {
+		resp.Message = "email not verified"
+		response.SendErrorResponse(w, resp, http.StatusForbidden)
+		return
+	}
+
+	code := utils.GenerateRandomNumber()
+	otp := &models.Otp{
+		UserID:    user.ID,
+		Code:      code,
+		IsUsed:    false,
+		ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
+		OtpType:   models.ResetPasswordType,
+	}
+
+	err = h.c.GetOtpRepository().Create(otp, nil)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	resp.Message = "otp send to your email"
+	env := h.c.Getenv("ENVIRONMENT")
+	if env == "development" || env == "test" {
+		resp.Data = map[string]string{
+			"code": code,
+		}
+	}
+	response.SendResponse(w, resp)
 }
 
 func (h *authHandler) changePassword(w http.ResponseWriter, r *http.Request) {
-	resp := response.ApiResponse{Message: "not implemented"}
-	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
+	resp := response.ApiResponse{}
+	body := new(changePasswordDto)
+
+	err := json.ReadJSON(r.Body, body)
+	defer r.Body.Close()
+
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.c.GetUserRepository().GetByEmail(body.Email, nil)
+	if err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			resp.Message = "user not found"
+		default:
+			resp.Message = err.Error()
+		}
+
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	auth, err := h.c.GetAuthRepository().GetByUserId(user.ID.String(), nil)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	err = utils.ComparePassword(body.Password, []byte(auth.Password))
+	if err == nil {
+		resp.Message = "you can't use your old password"
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	pwdHash, err := utils.GeneratePasswordHash(body.Password)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	oldHash := auth.Password
+	auth.Password = string(pwdHash)
+	auth.PasswordHistory = append(auth.PasswordHistory, models.PasswordHistory{
+		Password:  oldHash,
+		Timestamp: time.Now(),
+	})
+
+	err = h.c.GetAuthRepository().Update(auth, nil)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	resp.Message = "password changed successfully"
+	response.SendResponse(w, resp)
 }

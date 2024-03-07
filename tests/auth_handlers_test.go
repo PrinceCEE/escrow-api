@@ -93,7 +93,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 			payload, _ := json.WriteJSON(map[string]any{
 				"email":    s.testUser.Email,
 				"code":     verifyCode,
-				"otp_type": "EMAIL",
+				"otp_type": "email",
 			})
 
 			res, err := post(url+"/verify-code", contentType, bytes.NewBuffer(payload))
@@ -134,7 +134,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 			payload, _ := json.WriteJSON(map[string]any{
 				"email":    s.testUser.Email,
 				"code":     verifyCode,
-				"otp_type": "SMS",
+				"otp_type": "sms",
 			})
 
 			res, err := post(url+"/verify-code", contentType, bytes.NewBuffer(payload))
@@ -277,9 +277,102 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 
 	// test forgot and reset password
 	s.Run("reset and forgot password", func() {
-		s.Run("forgot password", func() {})
+		var verifyCode string
 
-		s.Run("reset password", func() {})
+		s.Run("forgot password", func() {
+			payload, _ := json.WriteJSON(map[string]string{
+				"email": s.testUser.Email,
+			})
+
+			res, err := post(url+"/reset-password", contentType, bytes.NewBuffer(payload))
+
+			s.NoError(err)
+			s.Equal(http.StatusOK, res.StatusCode)
+
+			defer res.Body.Close()
+
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.Equal("otp send to your email", respBody.Message)
+			s.NotEmpty(respBody.Data.Code)
+
+			verifyCode = respBody.Data.Code
+		})
+
+		s.Run("should verify otp", func() {
+			payload, _ := json.WriteJSON(map[string]any{
+				"email":    s.testUser.Email,
+				"code":     verifyCode,
+				"otp_type": "reset_password",
+			})
+
+			res, err := post(url+"/verify-code", contentType, bytes.NewBuffer(payload))
+
+			s.NoError(err)
+			s.Equal(http.StatusOK, res.StatusCode)
+
+			defer res.Body.Close()
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.Equal("otp verified successfully", respBody.Message)
+		})
+
+		s.Run("change password with old one", func() {
+			payload, _ := json.WriteJSON(map[string]string{
+				"email":    s.testUser.Email,
+				"password": s.password,
+			})
+
+			res, err := post(url+"/change-password", contentType, bytes.NewBuffer(payload))
+			s.NoError(err)
+			s.Equal(http.StatusBadRequest, res.StatusCode)
+
+			defer res.Body.Close()
+
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.Equal("you can't use your old password", respBody.Message)
+		})
+
+		s.Run("change password", func() {
+			payload, _ := json.WriteJSON(map[string]string{
+				"email":    s.testUser.Email,
+				"password": "password!",
+			})
+
+			res, err := post(url+"/change-password", contentType, bytes.NewBuffer(payload))
+			s.NoError(err)
+			s.Equal(http.StatusOK, res.StatusCode)
+
+			defer res.Body.Close()
+
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.Equal("password changed successfully", respBody.Message)
+		})
+
+		s.Run("sign in with new password", func() {
+			payload, _ := json.WriteJSON(map[string]any{
+				"email":    s.testUser.Email,
+				"password": "password!",
+			})
+
+			res, err := post(url+"/sign-in", contentType, bytes.NewBuffer(payload))
+			s.NoError(err)
+			s.Equal(http.StatusOK, res.StatusCode)
+
+			defer res.Body.Close()
+
+			respBody := new(Response)
+			_ = json.ReadJSON(res.Body, respBody)
+
+			s.NotEmpty(respBody.Meta.AccessToken)
+			s.NotEmpty(respBody.Meta.RefreshToken)
+		})
 	})
 }
 
