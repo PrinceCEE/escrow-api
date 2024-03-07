@@ -405,7 +405,7 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			resp.Message = response.ErrNotFound.Error()
+			resp.Message = fmt.Sprintf("user %s", response.ErrNotFound.Error())
 		default:
 			resp.Message = err.Error()
 		}
