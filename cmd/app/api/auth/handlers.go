@@ -28,8 +28,7 @@ const (
 	RegStage3Msg       = "sign up successful"
 )
 
-type IConfig interface {
-}
+type IConfig interface{}
 
 type authHandler struct {
 	c config.IConfig
@@ -139,6 +138,19 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 
 				resp.Message = RegStage2Msg
 				if env == "development" || env == "test" {
+					utils.Background(func() {
+						err = h.c.GetPush().SendEmail(&push.Email{
+							To:      []string{user.Email},
+							Subject: VerifyEmailSubject,
+							Text:    fmt.Sprintf("Use code %s to verify your phone number", otp.Code),
+							Html:    fmt.Sprintf("<p>Use code %s to verify your phone number</p>", otp.Code),
+						})
+
+						if err != nil {
+							h.c.GetLogger().Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
+						}
+					})
+
 					resp.Data = map[string]any{
 						"code": otp.Code,
 						"user": user,
@@ -273,6 +285,19 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 
 		resp.Message = RegStage2Msg
 		if env == "development" || env == "test" {
+			utils.Background(func() {
+				err = h.c.GetPush().SendEmail(&push.Email{
+					To:      []string{user.Email},
+					Subject: VerifyEmailSubject,
+					Text:    fmt.Sprintf("Use code %s to verify your phone number", otp.Code),
+					Html:    fmt.Sprintf("<p>Use code %s to verify your phone number</p>", otp.Code),
+				})
+
+				if err != nil {
+					h.c.GetLogger().Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
+				}
+			})
+
 			resp.Data = map[string]any{
 				"code": otp.Code,
 				"user": user,
@@ -475,6 +500,107 @@ func (h *authHandler) signIn(w http.ResponseWriter, r *http.Request) {
 	response.SendResponse(w, resp)
 }
 
+func (h *authHandler) resendCode(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{}
+	body := new(resendCodeOTPDto)
+	env := h.c.Getenv("ENVIRONMENT")
+
+	err := json.ReadJSON(r.Body, body)
+	defer r.Body.Close()
+
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	user := new(models.User)
+	if body.OtpType == models.SmsOtpType {
+		user, err = h.c.GetUserRepository().GetByPhoneNumber(body.Identifier, nil)
+		if err != nil {
+			resp.Message = err.Error()
+			response.SendErrorResponse(w, resp, http.StatusBadRequest)
+			return
+		}
+	} else {
+		user, err = h.c.GetUserRepository().GetByEmail(body.Identifier, nil)
+		if err != nil {
+			resp.Message = err.Error()
+			response.SendErrorResponse(w, resp, http.StatusBadRequest)
+			return
+		}
+	}
+
+	otp := &models.Otp{
+		UserID:    user.ID,
+		Code:      utils.GenerateRandomNumber(),
+		IsUsed:    false,
+		OtpType:   body.OtpType,
+		ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
+	}
+	err = h.c.GetOtpRepository().Create(otp, nil)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	switch body.OtpType {
+	case models.SmsOtpType:
+		utils.Background(func() {
+			h.c.GetPush().SendSMS(&push.Sms{
+				Phone:   user.PhoneNumber.String,
+				Message: fmt.Sprintf("Use code %s to verify your phone number", otp.Code),
+			})
+		})
+	case models.EmailOtpType:
+		utils.Background(func() {
+			err = h.c.GetPush().SendEmail(&push.Email{
+				To:      []string{user.Email},
+				Subject: VerifyEmailSubject,
+				Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
+				Html:    fmt.Sprintf("<p>Use code %s to verify your email</p>", otp.Code),
+			})
+
+			if err != nil {
+				h.c.GetLogger().Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
+			}
+		})
+	case models.ResetPasswordType:
+		utils.Background(func() {
+			err = h.c.GetPush().SendEmail(&push.Email{
+				To:      []string{user.Email},
+				Subject: VerifyEmailSubject,
+				Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
+				Html:    fmt.Sprintf("<p>Use code %s to verify your email</p>", otp.Code),
+			})
+
+			if err != nil {
+				h.c.GetLogger().Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
+			}
+		})
+	}
+
+	if body.OtpType == models.SmsOtpType {
+		resp.Message = "OTP sent to your phone number"
+	} else {
+		resp.Message = "OTP sent to your email"
+	}
+
+	if env == "development" || env == "test" {
+		resp.Data = map[string]any{
+			"code": otp.Code,
+			"user": user,
+		}
+	} else {
+		resp.Data = map[string]any{
+			"user": user,
+		}
+	}
+
+	response.SendResponse(w, resp)
+}
+
 func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 	resp := response.ApiResponse{}
 	body := new(verifyCodeDto)
@@ -616,6 +742,19 @@ func (h *authHandler) resetPassword(w http.ResponseWriter, r *http.Request) {
 		OtpType:   models.ResetPasswordType,
 	}
 
+	utils.Background(func() {
+		err = h.c.GetPush().SendEmail(&push.Email{
+			To:      []string{user.Email},
+			Subject: VerifyEmailSubject,
+			Text:    fmt.Sprintf("Use code %s to verify your email", otp.Code),
+			Html:    fmt.Sprintf("<p>Use code %s to verify your email</p>", otp.Code),
+		})
+
+		if err != nil {
+			h.c.GetLogger().Log(zerolog.InfoLevel, push.ErrSendingEmailMsg, nil, err)
+		}
+	})
+
 	err = h.c.GetOtpRepository().Create(otp, nil)
 	if err != nil {
 		resp.Message = err.Error()
@@ -630,6 +769,7 @@ func (h *authHandler) resetPassword(w http.ResponseWriter, r *http.Request) {
 			"code": code,
 		}
 	}
+
 	response.SendResponse(w, resp)
 }
 

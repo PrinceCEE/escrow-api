@@ -18,6 +18,7 @@ import (
 	"github.com/Bupher-Co/bupher-api/config"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/go-chi/httprate"
 )
 
@@ -62,6 +63,7 @@ func GetRouter(c config.IConfig) chi.Router {
 
 	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(middleware.Recoverer)
+	r.Use(cors.AllowAll().Handler)
 	r.Mount("/api/v1", apiRouter)
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
