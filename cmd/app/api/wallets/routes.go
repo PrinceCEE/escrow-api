@@ -12,7 +12,7 @@ func WalletsRouter(c config.IConfig) chi.Router {
 	r.Post("/add-funds", h.addFunds)
 	r.Post("/withdraw-funds", h.withrawFunds)
 	r.Get("/{user_id}", h.getWallet)
-	r.Get("/{wallt_id}/history", h.getWalletHistory)
+	r.Get("/{wallet_id}/history", h.getWalletHistories)
 	r.Post("/bank-accounts", h.addBankAccount)
 	r.Delete("/bank-accounts", h.deleteBankAccount)
 	r.Post("/bank-accounts", h.getBankAccounts)

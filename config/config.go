@@ -94,6 +94,9 @@ type IConfig interface {
 	GetOtpRepository() repositories.IOtpRepository
 	GetTokenRepository() repositories.ITokenRepository
 	GetUserRepository() repositories.IUserRepository
+	GetWalletRepository() repositories.IWalletRepository
+	GetWalletHistoryRepository() repositories.IWalletHistoryRepository
+	GetBankAccountRepository() repositories.IBankAccountRepository
 	GetDB() *pgxpool.Pool
 	GetRedisClient() *RedisClient
 	GetLogger() *Logger
@@ -101,16 +104,19 @@ type IConfig interface {
 }
 
 type Config struct {
-	AuthRepository     repositories.IAuthRepository
-	BusinessRepository repositories.IBusinessRepository
-	EventRepository    repositories.IEventRepository
-	OtpRepository      repositories.IOtpRepository
-	TokenRepository    repositories.ITokenRepository
-	UserRepository     repositories.IUserRepository
-	DB                 *pgxpool.Pool
-	RedisClient        *RedisClient
-	Logger             *Logger
-	Push               push.IPush
+	AuthRepository          repositories.IAuthRepository
+	BusinessRepository      repositories.IBusinessRepository
+	EventRepository         repositories.IEventRepository
+	OtpRepository           repositories.IOtpRepository
+	TokenRepository         repositories.ITokenRepository
+	UserRepository          repositories.IUserRepository
+	WalletRepository        repositories.IWalletRepository
+	WalletHistoryRepository repositories.IWalletHistoryRepository
+	BankAccountRepository   repositories.IBankAccountRepository
+	DB                      *pgxpool.Pool
+	RedisClient             *RedisClient
+	Logger                  *Logger
+	Push                    push.IPush
 }
 
 func NewConfig() *Config {
@@ -144,16 +150,19 @@ func NewConfig() *Config {
 
 	timeout := 10 * time.Second
 	return &Config{
-		DB:                 dbpool,
-		Logger:             logger,
-		RedisClient:        rclient,
-		AuthRepository:     repositories.NewAuthRepository(dbpool, timeout),
-		BusinessRepository: repositories.NewBusinessRepository(dbpool, timeout),
-		EventRepository:    repositories.NewEventRepository(dbpool, timeout),
-		TokenRepository:    repositories.NewTokenRepository(dbpool, timeout),
-		UserRepository:     repositories.NewUserRepository(dbpool, timeout),
-		OtpRepository:      repositories.NewOtpRepository(dbpool, timeout),
-		Push:               &push.Push{},
+		DB:                      dbpool,
+		Logger:                  logger,
+		RedisClient:             rclient,
+		AuthRepository:          repositories.NewAuthRepository(dbpool, timeout),
+		BusinessRepository:      repositories.NewBusinessRepository(dbpool, timeout),
+		EventRepository:         repositories.NewEventRepository(dbpool, timeout),
+		TokenRepository:         repositories.NewTokenRepository(dbpool, timeout),
+		UserRepository:          repositories.NewUserRepository(dbpool, timeout),
+		OtpRepository:           repositories.NewOtpRepository(dbpool, timeout),
+		WalletRepository:        repositories.NewWalletRepository(dbpool, timeout),
+		WalletHistoryRepository: repositories.NewWalletHistoryRepository(dbpool, timeout),
+		BankAccountRepository:   repositories.NewBankAccountRepository(dbpool, timeout),
+		Push:                    &push.Push{},
 	}
 }
 
@@ -183,6 +192,18 @@ func (c *Config) GetTokenRepository() repositories.ITokenRepository {
 
 func (c *Config) GetUserRepository() repositories.IUserRepository {
 	return c.UserRepository
+}
+
+func (c *Config) GetWalletRepository() repositories.IWalletRepository {
+	return c.WalletRepository
+}
+
+func (c *Config) GetWalletHistoryRepository() repositories.IWalletHistoryRepository {
+	return c.WalletHistoryRepository
+}
+
+func (c *Config) GetBankAccountRepository() repositories.IBankAccountRepository {
+	return c.BankAccountRepository
 }
 
 func (c *Config) GetDB() *pgxpool.Pool {
