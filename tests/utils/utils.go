@@ -18,6 +18,15 @@ const setupTypesSql = `
 	CREATE TYPE EVENT_TYPE_ENUM AS ENUM ('sms', 'email');
 	CREATE TYPE TOKEN_TYPE_ENUM AS ENUM ('access_token', 'refresh_token');
 	CREATE TYPE OTP_TYPE AS ENUM ('sms', 'email', 'reset_password');
+	CREATE TYPE MODEL_STATUS_ENUM AS ENUM (
+		"Successful",
+		"Canceled",
+		"Pending"
+	);
+	CREATE TYPE WITHDRAWAL_TYPE_ENUM AS ENUM (
+		"Withdrawal",
+		"Deposit"
+	);
 
 	CREATE TABLE IF NOT EXISTS users (
 		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -93,6 +102,44 @@ const setupTypesSql = `
 		expires_in TIMESTAMPTZ NOT NULL,
 		version INT DEFAULT 1
 	);
+
+	CREATE TABLE IF NOT EXISTS wallets (
+		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		identifier UUID NOT NULL,
+		balance INT NOT NULL DEFAULT 0,
+		receivable_balance INT NOT NULL DEFAULT 0,
+		payable_balance INT NOT NULL DEFAULT 0,
+		account_type ACCOUNT_TYPE_ENUM NOT NULL,
+		created_at TIMESTAMPTZ NOT NULL,
+		updated_at TIMESTAMPTZ NOT NULL,
+		deleted_at TIMESTAMPTZ,
+		version INT DEFAULT 1
+	);
+	
+	CREATE TABLE IF NOT EXISTS wallet_histories (
+		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		wallet_id UUID REFERENCES wallets NOT NULL,
+		type WITHDRAWAL_TYPE_ENUM NOT NULL,
+		amount INT NOT NULL,
+		status MODEL_STATUS_ENUM NOT NULL DEFAULT "Pending",
+		created_at TIMESTAMPTZ NOT NULL,
+		updated_at TIMESTAMPTZ NOT NULL,
+		deleted_at TIMESTAMPTZ,
+		version INT DEFAULT 1
+	);
+	
+	CREATE TABLE IF NOT EXISTS bank_accounts (
+		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		wallet_id UUID NOT NULL,
+		bank_name VARCHAR(255) NOT NULL,
+		account_name VARCHAR(255) NOT NULL,
+		account_number CHAR(10) NOT NULL,
+		bvn CHAR(11) NOT NULL,
+		created_at TIMESTAMPTZ NOT NULL,
+		updated_at TIMESTAMPTZ NOT NULL,
+		deleted_at TIMESTAMPTZ,
+		version INT DEFAULT 1
+	);
 `
 
 var tearDownTypesSql = `
@@ -102,12 +149,17 @@ var tearDownTypesSql = `
 	DROP TABLE IF EXISTS businesses;
 	DROP TABLE IF EXISTS otps;
 	DROP TABLE IF EXISTS users;
+	DROP TABLE IF EXISTS wallets;
+	DROP TABLE IF EXISTS wallet_histories;
+	DROP TABLE IF EXISTS bank_accounts;
 
 	DROP TYPE IF EXISTS ACCOUNT_TYPE_ENUM;
 	DROP TYPE IF EXISTS EVENT_ENVIRONMENT_ENUM;
 	DROP TYPE IF EXISTS EVENT_TYPE_ENUM;
 	DROP TYPE IF EXISTS TOKEN_TYPE_ENUM;
 	DROP TYPE IF EXISTS OTP_TYPE;
+	DROP TYPE IF EXISTS MODEL_STATUS_ENUM;
+	DROP TYPE IF EXISTS WITHDRAWAL_TYPE_ENUM;
 `
 
 func createTablesAndTypes(pool *pgxpool.Pool) error {

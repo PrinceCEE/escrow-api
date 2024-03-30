@@ -15,16 +15,19 @@ import (
 )
 
 type TestConfig struct {
-	AuthRepository     repositories.IAuthRepository
-	BusinessRepository repositories.IBusinessRepository
-	EventRepository    repositories.IEventRepository
-	OtpRepository      repositories.IOtpRepository
-	TokenRepository    repositories.ITokenRepository
-	UserRepository     repositories.IUserRepository
-	DB                 *pgxpool.Pool
-	RedisClient        *config.RedisClient
-	Logger             *config.Logger
-	Push               push.IPush
+	AuthRepository          repositories.IAuthRepository
+	BusinessRepository      repositories.IBusinessRepository
+	EventRepository         repositories.IEventRepository
+	OtpRepository           repositories.IOtpRepository
+	TokenRepository         repositories.ITokenRepository
+	UserRepository          repositories.IUserRepository
+	WalletRepository        repositories.IWalletRepository
+	WalletHistoryRepository repositories.IWalletHistoryRepository
+	BankAccountRepository   repositories.IBankAccountRepository
+	DB                      *pgxpool.Pool
+	RedisClient             *config.RedisClient
+	Logger                  *config.Logger
+	Push                    push.IPush
 	mock.Mock
 }
 
@@ -55,15 +58,18 @@ func NewTestConfig() *TestConfig {
 			zerolog.New(io.Discard).Level(zerolog.DebugLevel).With().Timestamp().Logger(),
 			zerolog.DebugLevel,
 		),
-		RedisClient:        &config.RedisClient{},
-		DB:                 pool,
-		AuthRepository:     test_repositories.NewAuthRepository(pool, timeout),
-		BusinessRepository: test_repositories.NewBusinessRepository(pool, timeout),
-		EventRepository:    test_repositories.NewEventRepository(pool, timeout),
-		OtpRepository:      test_repositories.NewOtpRepository(pool, timeout),
-		TokenRepository:    test_repositories.NewTokenRepository(pool, timeout),
-		UserRepository:     test_repositories.NewUserRepository(pool, timeout),
-		Push:               &TestPush{},
+		RedisClient:             &config.RedisClient{},
+		DB:                      pool,
+		AuthRepository:          test_repositories.NewAuthRepository(pool, timeout),
+		BusinessRepository:      test_repositories.NewBusinessRepository(pool, timeout),
+		EventRepository:         test_repositories.NewEventRepository(pool, timeout),
+		OtpRepository:           test_repositories.NewOtpRepository(pool, timeout),
+		TokenRepository:         test_repositories.NewTokenRepository(pool, timeout),
+		UserRepository:          test_repositories.NewUserRepository(pool, timeout),
+		WalletRepository:        test_repositories.NewWalletRepository(pool, timeout),
+		WalletHistoryRepository: test_repositories.NewWalletHistoryRepository(pool, timeout),
+		BankAccountRepository:   test_repositories.NewBankAccountRepository(pool, timeout),
+		Push:                    &TestPush{},
 	}
 }
 
@@ -100,6 +106,18 @@ func (c *TestConfig) GetTokenRepository() repositories.ITokenRepository {
 
 func (c *TestConfig) GetUserRepository() repositories.IUserRepository {
 	return c.UserRepository
+}
+
+func (c *TestConfig) GetWalletRepository() repositories.IWalletRepository {
+	return c.WalletRepository
+}
+
+func (c *TestConfig) GetWalletHistoryRepository() repositories.IWalletHistoryRepository {
+	return c.WalletHistoryRepository
+}
+
+func (c *TestConfig) GetBankAccountRepository() repositories.IBankAccountRepository {
+	return c.BankAccountRepository
 }
 
 func (c *TestConfig) GetDB() *pgxpool.Pool {
