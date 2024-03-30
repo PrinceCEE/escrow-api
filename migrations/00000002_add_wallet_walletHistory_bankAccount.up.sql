@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
   created_at TIMESTAMPTZ NOT NULL,
 	updated_at TIMESTAMPTZ NOT NULL,
 	deleted_at TIMESTAMPTZ,
-  version INT DEFAULT 1
+  version INT DEFAULT 1,
+
+  CONSTRAINT unique_bankname_accountnumber UNIQUE(account_number,bank_name)
 );
 

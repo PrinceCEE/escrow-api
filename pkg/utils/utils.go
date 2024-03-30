@@ -17,6 +17,8 @@ const (
 	RegStage3
 )
 
+type ContextKey struct{}
+
 func StructToMap(data any) (map[string]any, error) {
 	mapData := make(map[string]any)
 

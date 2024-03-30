@@ -1,5 +1,10 @@
 package models
 
+const (
+	PersonalAccountType = "personal"
+	BusinessAccountType = "business"
+)
+
 type User struct {
 	Email                 string     `json:"email,omitempty" db:"email"`
 	PhoneNumber           NullString `json:"phone_number,omitempty" db:"phone_number"`

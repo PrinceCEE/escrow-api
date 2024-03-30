@@ -1,6 +1,6 @@
 package models
 
-import uuid "github.com/jackc/pgx-gofrs-uuid"
+import "github.com/gofrs/uuid"
 
 type Wallet struct {
 	Balance     int       `json:"balance" db:"balance"`

@@ -1,6 +1,7 @@
 package wallets
 
 import (
+	"github.com/Bupher-Co/bupher-api/cmd/app/middlewares"
 	"github.com/Bupher-Co/bupher-api/config"
 	"github.com/go-chi/chi/v5"
 )
@@ -8,6 +9,8 @@ import (
 func WalletsRouter(c config.IConfig) chi.Router {
 	h := walletHandler{c}
 	r := chi.NewRouter()
+
+	r.Use(middlewares.AuthMiddleware(c))
 
 	r.Post("/add-funds", h.addFunds)
 	r.Post("/withdraw-funds", h.withrawFunds)
