@@ -9,8 +9,8 @@ type addNewAccountDto struct {
 
 type getBankAccountsQueryDto struct {
 	WalletID string `json:"wallet_id" validate:"uuid"`
-	Page     *int   `json:"page" validate:"number,min=1"`
-	PageSize *int   `json:"page_size" validate:"number,min=1,max=100"`
+	Page     int    `json:"page" validate:"number,min=1"`
+	PageSize int    `json:"page_size" validate:"number,min=1,max=100"`
 }
 
 type addFundsDto struct {
