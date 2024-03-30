@@ -56,8 +56,15 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userRepo := h.c.GetUserRepository()
+	businessRepo := h.c.GetBusinessRepository()
+	authRepo := h.c.GetAuthRepository()
+	otpRepo := h.c.GetOtpRepository()
+	tokenRepo := h.c.GetTokenRepository()
+	walletRepo := h.c.GetWalletRepository()
+
 	user := new(models.User)
-	user, err = h.c.GetUserRepository().GetByEmail(*body.Email, nil)
+	user, err = userRepo.GetByEmail(*body.Email, nil)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -76,7 +83,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 					ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
 				}
 
-				err = h.c.GetOtpRepository().Create(otp, nil)
+				err = otpRepo.Create(otp, nil)
 				if err != nil {
 					resp.Message = err.Error()
 					response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -122,7 +129,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 					ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
 				}
 
-				err = h.c.GetOtpRepository().Create(otp, nil)
+				err = otpRepo.Create(otp, nil)
 				if err != nil {
 					resp.Message = err.Error()
 					response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -189,7 +196,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			RegStage:    int(*body.RegStage),
 		}
 
-		err := h.c.GetUserRepository().Create(user, tx)
+		err := userRepo.Create(user, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -203,7 +210,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 				Email:  *body.Email,
 			}
 
-			err = h.c.GetBusinessRepository().Create(business, tx)
+			err = businessRepo.Create(business, tx)
 			if err != nil {
 				resp.Message = err.Error()
 				response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -219,7 +226,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
 		}
 
-		err = h.c.GetOtpRepository().Create(otp, tx)
+		err = otpRepo.Create(otp, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -255,7 +262,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		user.PhoneNumber = models.NullString{NullString: sql.NullString{String: *body.PhoneNumber, Valid: true}}
 		user.RegStage = int(*body.RegStage)
 
-		err = h.c.GetUserRepository().Update(user, tx)
+		err = userRepo.Update(user, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -269,7 +276,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			OtpType:   models.SmsOtpType,
 			ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
 		}
-		err = h.c.GetOtpRepository().Create(otp, tx)
+		err = otpRepo.Create(otp, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -312,7 +319,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		user.LastName = models.NullString{NullString: sql.NullString{String: *body.LastName, Valid: true}}
 		user.RegStage = int(*body.RegStage)
 
-		err = h.c.GetUserRepository().Update(user, tx)
+		err = userRepo.Update(user, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -331,10 +338,25 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			Password: string(hashPwd),
 		}
 
-		err = h.c.GetAuthRepository().Create(auth, tx)
+		err = authRepo.Create(auth, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
+			return
+		}
+
+		wallet := &models.Wallet{AccountType: user.AccountType}
+		if user.AccountType == models.PersonalAccountType {
+			wallet.Identifier = user.ID
+		} else {
+			business, _ := businessRepo.GetByUserID(user.ID.String(), tx)
+			wallet.Identifier = business.ID
+		}
+
+		err = walletRepo.Create(wallet, tx)
+		if err != nil {
+			resp.Message = err.Error()
+			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
 			return
 		}
 
@@ -363,14 +385,14 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			TokenType: models.RefreshToken,
 		}
 
-		err = h.c.GetTokenRepository().Create(accessToken, tx)
+		err = tokenRepo.Create(accessToken, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
 			return
 		}
 
-		err = h.c.GetTokenRepository().Create(refreshToken, tx)
+		err = tokenRepo.Create(refreshToken, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
