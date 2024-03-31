@@ -5,6 +5,7 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/internal/repositories"
+	"github.com/Bupher-Co/bupher-api/pkg/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/mock"
@@ -14,7 +15,7 @@ type IWalletHistoryRepository interface {
 	Create(a *models.WalletHistory, tx pgx.Tx) error
 	Update(a *models.WalletHistory, tx pgx.Tx) error
 	GetById(id string, tx pgx.Tx) (*models.WalletHistory, error)
-	GetByWalletId(id string, tx pgx.Tx) ([]*models.WalletHistory, error)
+	GetByWalletId(id string, pagination utils.Pagination, tx pgx.Tx) ([]*models.WalletHistory, error)
 	Delete(id string, tx pgx.Tx) error
 	SoftDelete(id string, tx pgx.Tx) error
 }
@@ -48,6 +49,6 @@ func (r *TestWalletHistoryRepository) SoftDelete(id string, tx pgx.Tx) error {
 	return r.repo.SoftDelete(id, tx)
 }
 
-func (r *TestWalletHistoryRepository) GetByWalletId(id string, tx pgx.Tx) ([]*models.WalletHistory, error) {
-	return r.repo.GetByWalletId(id, tx)
+func (r *TestWalletHistoryRepository) GetByWalletId(id string, pagination utils.Pagination, tx pgx.Tx) ([]*models.WalletHistory, error) {
+	return r.repo.GetByWalletId(id, pagination, tx)
 }
