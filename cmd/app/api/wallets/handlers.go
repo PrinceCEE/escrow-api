@@ -274,7 +274,56 @@ func (h *walletHandler) getWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *walletHandler) addFunds(w http.ResponseWriter, r *http.Request) {
-	resp := response.ApiResponse{Message: "not implemented"}
+	resp := response.ApiResponse{}
+	body := new(addFundsDto)
+
+	err := json.ReadJSON(r.Body, body)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	tx, _ := h.c.GetDB().Begin(context.Background())
+
+	walletRepo := h.c.GetWalletRepository()
+	walletHistoryRepo := h.c.GetWalletHistoryRepository()
+	businessRepo := h.c.GetBusinessRepository()
+
+	user := r.Context().Value(utils.ContextKey{}).(*models.User)
+
+	wallet := new(models.Wallet)
+	if user.AccountType == models.PersonalAccountType {
+		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), tx)
+	} else {
+		business, _ := businessRepo.GetByUserID(user.ID.String(), tx)
+		wallet, _ = walletRepo.GetByIdentifier(business.ID.String(), tx)
+	}
+
+	wallet.Balance += body.Amount
+	wallet.Receivable += body.Amount
+	err = walletRepo.Update(wallet, tx)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	walletHistory := &models.WalletHistory{
+		WalletID: wallet.ID,
+		Type:     models.WalletHistoryDepositType,
+		Amount:   body.Amount,
+		Status:   models.WalletHistoryPending,
+	}
+	err = walletHistoryRepo.Create(walletHistory, tx)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	// read into how to populate the struct in a model
+	// change the dependency to [user depends on business]
 	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 

@@ -107,3 +107,19 @@ func Background(fn func()) {
 		fn()
 	}()
 }
+
+func GetPage(v int) int {
+	if v == 0 {
+		return 1
+	}
+
+	return v
+}
+
+func GetPageSize(v int) int {
+	if v == 0 {
+		return 20
+	}
+
+	return v
+}
