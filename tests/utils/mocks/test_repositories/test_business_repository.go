@@ -31,10 +31,6 @@ func (r *TestBusinessRepository) GetById(id string, tx pgx.Tx) (*models.Business
 	return r.repo.GetById(id, tx)
 }
 
-func (r *TestBusinessRepository) GetByUserID(id string, tx pgx.Tx) (*models.Business, error) {
-	return r.repo.GetByUserID(id, tx)
-}
-
 func (r *TestBusinessRepository) Delete(id string, tx pgx.Tx) error {
 	return r.repo.Delete(id, tx)
 }

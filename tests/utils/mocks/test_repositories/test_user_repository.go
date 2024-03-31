@@ -31,6 +31,10 @@ func (r *UserRepository) GetById(id string, tx pgx.Tx) (*models.User, error) {
 	return r.repo.GetById(id, tx)
 }
 
+func (r *UserRepository) GetByBusinessId(id string, tx pgx.Tx) (*models.User, error) {
+	return r.repo.GetByBusinessId(id, tx)
+}
+
 func (r *UserRepository) GetByEmail(email string, tx pgx.Tx) (*models.User, error) {
 	return r.repo.GetByEmail(email, tx)
 }
