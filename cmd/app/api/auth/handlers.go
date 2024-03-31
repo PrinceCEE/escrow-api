@@ -190,24 +190,11 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 
 	switch *body.RegStage {
 	case utils.RegStage1:
-		user = &models.User{
-			Email:       *body.Email,
-			AccountType: *body.AccountType,
-			RegStage:    int(*body.RegStage),
-		}
-
-		err := userRepo.Create(user, tx)
-		if err != nil {
-			resp.Message = err.Error()
-			response.SendErrorResponse(w, resp, http.StatusBadRequest)
-			return
-		}
-
+		var business *models.Business
 		if *body.AccountType == "business" {
-			business := &models.Business{
-				UserID: user.ID,
-				Name:   *body.BusinessName,
-				Email:  *body.Email,
+			business = &models.Business{
+				Name:  *body.BusinessName,
+				Email: *body.Email,
 			}
 
 			err = businessRepo.Create(business, tx)
@@ -216,6 +203,23 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 				response.SendErrorResponse(w, resp, http.StatusBadRequest)
 				return
 			}
+		}
+
+		user = &models.User{
+			Email:       *body.Email,
+			AccountType: *body.AccountType,
+			RegStage:    int(*body.RegStage),
+		}
+		if business != nil {
+			user.BusinessID = business.ID
+			user.Business = *business
+		}
+
+		err := userRepo.Create(user, tx)
+		if err != nil {
+			resp.Message = err.Error()
+			response.SendErrorResponse(w, resp, http.StatusBadRequest)
+			return
 		}
 
 		otp := &models.Otp{
@@ -349,8 +353,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		if user.AccountType == models.PersonalAccountType {
 			wallet.Identifier = user.ID
 		} else {
-			business, _ := businessRepo.GetByUserID(user.ID.String(), tx)
-			wallet.Identifier = business.ID
+			wallet.Identifier = user.BusinessID
 		}
 
 		err = walletRepo.Create(wallet, tx)
@@ -421,6 +424,10 @@ func (h *authHandler) signIn(w http.ResponseWriter, r *http.Request) {
 	resp := response.ApiResponse{}
 	body := new(signInDto)
 
+	userRepo := h.c.GetUserRepository()
+	authRepo := h.c.GetAuthRepository()
+	tokenRepo := h.c.GetTokenRepository()
+
 	err := json.ReadJSON(r.Body, body)
 	defer r.Body.Close()
 
@@ -430,7 +437,7 @@ func (h *authHandler) signIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.c.GetUserRepository().GetByEmail(body.Email, nil)
+	user, err := userRepo.GetByEmail(body.Email, nil)
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
@@ -454,7 +461,7 @@ func (h *authHandler) signIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth, err := h.c.GetAuthRepository().GetByUserId(user.ID.String(), nil)
+	auth, err := authRepo.GetByUserId(user.ID.String(), nil)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -499,14 +506,14 @@ func (h *authHandler) signIn(w http.ResponseWriter, r *http.Request) {
 		TokenType: models.RefreshToken,
 	}
 
-	err = h.c.GetTokenRepository().Create(accessToken, nil)
+	err = tokenRepo.Create(accessToken, nil)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
 		return
 	}
 
-	err = h.c.GetTokenRepository().Create(refreshToken, nil)
+	err = tokenRepo.Create(refreshToken, nil)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -530,6 +537,9 @@ func (h *authHandler) resendCode(w http.ResponseWriter, r *http.Request) {
 	err := json.ReadJSON(r.Body, body)
 	defer r.Body.Close()
 
+	userRepo := h.c.GetUserRepository()
+	otpRepo := h.c.GetOtpRepository()
+
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -538,14 +548,14 @@ func (h *authHandler) resendCode(w http.ResponseWriter, r *http.Request) {
 
 	user := new(models.User)
 	if body.OtpType == models.SmsOtpType {
-		user, err = h.c.GetUserRepository().GetByPhoneNumber(body.Identifier, nil)
+		user, err = userRepo.GetByPhoneNumber(body.Identifier, nil)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
 			return
 		}
 	} else {
-		user, err = h.c.GetUserRepository().GetByEmail(body.Identifier, nil)
+		user, err = userRepo.GetByEmail(body.Identifier, nil)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -560,7 +570,7 @@ func (h *authHandler) resendCode(w http.ResponseWriter, r *http.Request) {
 		OtpType:   body.OtpType,
 		ExpiresIn: time.Now().Add(models.OtpExpiresIn * time.Minute),
 	}
-	err = h.c.GetOtpRepository().Create(otp, nil)
+	err = otpRepo.Create(otp, nil)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -630,6 +640,9 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 	err := json.ReadJSON(r.Body, body)
 	defer r.Body.Close()
 
+	userRepo := h.c.GetUserRepository()
+	otpRepo := h.c.GetOtpRepository()
+
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -644,7 +657,7 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.c.GetUserRepository().GetByEmail(body.Email, nil)
+	user, err := userRepo.GetByEmail(body.Email, nil)
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
@@ -666,7 +679,7 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	otp, err := h.c.GetOtpRepository().GetOneByWhere(`
+	otp, err := otpRepo.GetOneByWhere(`
 		WHERE
 			code = $1
 			AND is_used = $2
@@ -699,14 +712,14 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 		resp.Message = "otp verified successfully"
 	}
 
-	err = h.c.GetUserRepository().Update(user, tx)
+	err = userRepo.Update(user, tx)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
 		return
 	}
 
-	err = h.c.GetOtpRepository().Update(otp, tx)
+	err = otpRepo.Update(otp, tx)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -736,7 +749,10 @@ func (h *authHandler) resetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.c.GetUserRepository().GetByEmail(body.Email, nil)
+	userRepo := h.c.GetUserRepository()
+	otpRepo := h.c.GetOtpRepository()
+
+	user, err := userRepo.GetByEmail(body.Email, nil)
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
@@ -777,7 +793,7 @@ func (h *authHandler) resetPassword(w http.ResponseWriter, r *http.Request) {
 		}
 	})
 
-	err = h.c.GetOtpRepository().Create(otp, nil)
+	err = otpRepo.Create(otp, nil)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -808,7 +824,10 @@ func (h *authHandler) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.c.GetUserRepository().GetByEmail(body.Email, nil)
+	userRepo := h.c.GetUserRepository()
+	authRepo := h.c.GetAuthRepository()
+
+	user, err := userRepo.GetByEmail(body.Email, nil)
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
@@ -821,7 +840,7 @@ func (h *authHandler) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth, err := h.c.GetAuthRepository().GetByUserId(user.ID.String(), nil)
+	auth, err := authRepo.GetByUserId(user.ID.String(), nil)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -849,7 +868,7 @@ func (h *authHandler) changePassword(w http.ResponseWriter, r *http.Request) {
 		Timestamp: time.Now(),
 	})
 
-	err = h.c.GetAuthRepository().Update(auth, nil)
+	err = authRepo.Update(auth, nil)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
