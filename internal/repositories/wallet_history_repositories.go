@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
@@ -12,8 +13,8 @@ import (
 )
 
 type IWalletHistoryRepository interface {
-	Create(a *models.WalletHistory, tx pgx.Tx) error
-	Update(a *models.WalletHistory, tx pgx.Tx) error
+	Create(h *models.WalletHistory, tx pgx.Tx) error
+	Update(h *models.WalletHistory, tx pgx.Tx) error
 	GetById(id string, tx pgx.Tx) (*models.WalletHistory, error)
 	GetByWalletId(id string, tx pgx.Tx) ([]*models.WalletHistory, error)
 	Delete(id string, tx pgx.Tx) error
@@ -70,32 +71,43 @@ func (repo *WalletHistoryRepository) Update(h *models.WalletHistory, tx pgx.Tx) 
 	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&h.Version)
 }
 
-func (repo *WalletHistoryRepository) GetById(id string, tx pgx.Tx) (*models.WalletHistory, error) {
+func (repo *WalletHistoryRepository) getByKey(key string, value any, tx pgx.Tx) (*models.WalletHistory, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
 	h := new(models.WalletHistory)
-	query := `
+	query := fmt.Sprintf(`
 		SELECT
-			id,
-			wallet_id,
-			type,
-			amount,
-			status,
-			created_at,
-			updated_at,
-			deleted_at,
-			version
+			h.id,
+			h.wallet_id,
+			h.type,
+			h.amount,
+			h.status,
+			h.created_at,
+			h.updated_at,
+			h.deleted_at,
+			h.version
+			w.id,
+			w.identifier,
+			w.balance,
+			w.receivable_balance,
+			w.payable_balance,
+			w.account_type,
+			w.created_at,
+			w.updated_at,
+			w.deleted_at,
+			w.version
 		FROM
-			wallets
-		WHERE id = $1
-	`
+			wallet_histories h
+		INNER JOIN wallets w ON w.id = h.wallet_id
+		WHERE %s = $1
+	`, key)
 
 	var row pgx.Row
 	if tx != nil {
-		row = tx.QueryRow(ctx, query, id)
+		row = tx.QueryRow(ctx, query, value)
 	} else {
-		row = repo.DB.QueryRow(ctx, query, id)
+		row = repo.DB.QueryRow(ctx, query, value)
 	}
 
 	err := row.Scan(
@@ -108,12 +120,26 @@ func (repo *WalletHistoryRepository) GetById(id string, tx pgx.Tx) (*models.Wall
 		&h.UpdatedAt,
 		&h.DeletedAt,
 		&h.Version,
+		&h.Wallet.ID,
+		&h.Wallet.Identifier,
+		&h.Wallet.Balance,
+		&h.Wallet.Receivable,
+		&h.Wallet.Payable,
+		&h.Wallet.AccountType,
+		&h.Wallet.CreatedAt,
+		&h.Wallet.UpdatedAt,
+		&h.Wallet.DeletedAt,
+		&h.Wallet.Version,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	return h, nil
+}
+
+func (repo *WalletHistoryRepository) GetById(id string, tx pgx.Tx) (*models.WalletHistory, error) {
+	return repo.getByKey("h.id", id, tx)
 }
 
 func (repo *WalletHistoryRepository) Delete(id string, tx pgx.Tx) (err error) {
@@ -150,18 +176,29 @@ func (repo *WalletHistoryRepository) GetByWalletId(id string, tx pgx.Tx) ([]*mod
 
 	query := `
 		SELECT
-			id,
-			wallet_id,
-			type,
-			amount,
-			status,
-			created_at,
-			updated_at,
-			deleted_at,
-			version
+			h.id,
+			h.wallet_id,
+			h.type,
+			h.amount,
+			h.status,
+			h.created_at,
+			h.updated_at,
+			h.deleted_at,
+			h.version
+			w.id,
+			w.identifier,
+			w.balance,
+			w.receivable_balance,
+			w.payable_balance,
+			w.account_type,
+			w.created_at,
+			w.updated_at,
+			w.deleted_at,
+			w.version
 		FROM
-			wallet_histories
-		WHERE wallet_id = $1
+			wallet_histories h
+		INNER JOIN wallets w ON w.id = h.wallet_id
+		WHERE h.wallet_id = $1
 	`
 
 	var rows pgx.Rows
@@ -181,8 +218,39 @@ func (repo *WalletHistoryRepository) GetByWalletId(id string, tx pgx.Tx) ([]*mod
 		rows = _rows
 	}
 
-	walletHistories, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[models.WalletHistory])
-	if err != nil {
+	walletHistories := []*models.WalletHistory{}
+	for rows.Next() {
+		var h models.WalletHistory
+		err := rows.Scan(
+			&h.ID,
+			&h.WalletID,
+			&h.Type,
+			&h.Amount,
+			&h.Status,
+			&h.CreatedAt,
+			&h.UpdatedAt,
+			&h.DeletedAt,
+			&h.Version,
+			&h.Wallet.ID,
+			&h.Wallet.Identifier,
+			&h.Wallet.Balance,
+			&h.Wallet.Receivable,
+			&h.Wallet.Payable,
+			&h.Wallet.AccountType,
+			&h.Wallet.CreatedAt,
+			&h.Wallet.UpdatedAt,
+			&h.Wallet.DeletedAt,
+			&h.Wallet.Version,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		walletHistories = append(walletHistories, &h)
+	}
+
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 

@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
@@ -12,8 +13,8 @@ import (
 )
 
 type IWalletRepository interface {
-	Create(a *models.Wallet, tx pgx.Tx) error
-	Update(a *models.Wallet, tx pgx.Tx) error
+	Create(w *models.Wallet, tx pgx.Tx) error
+	Update(w *models.Wallet, tx pgx.Tx) error
 	GetById(id string, tx pgx.Tx) (*models.Wallet, error)
 	GetByIdentifier(id string, tx pgx.Tx) (*models.Wallet, error)
 	Delete(id string, tx pgx.Tx) error
@@ -70,33 +71,56 @@ func (repo *WalletRepository) Update(w *models.Wallet, tx pgx.Tx) error {
 	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&w.Version)
 }
 
-func (repo *WalletRepository) GetById(id string, tx pgx.Tx) (*models.Wallet, error) {
+func (repo *WalletRepository) getByKey(key string, value any, tx pgx.Tx) (*models.Wallet, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
 	w := new(models.Wallet)
-	query := `
+	query := fmt.Sprintf(`
 		SELECT
-			id,
-			identifier,
-			balance,
-			receivable_balance,
-			payable_balance,
-			account_type,
-			created_at,
-			updated_at,
-			deleted_at,
-			version
+			w.id,
+			w.identifier,
+			w.balance,
+			w.receivable_balance,
+			w.payable_balance,
+			w.account_type,
+			w.created_at,
+			w.updated_at,
+			w.deleted_at,
+			w.version
+			u.id,
+			u.email,
+			u.phone_number,
+			u.first_name,
+			u.last_name,
+			u.is_phone_number_verified,
+			u.is_email_verified,
+			u.reg_stage,
+			u.account_type,
+			u.business_id,
+			u.created_at,
+			u.updated_at,
+			u.deleted_at,
+			u.version
+			b.id,
+			b.name,
+			b.email,
+			b.created_at,
+			b.updated_at,
+			b.deleted_at,
+			b.version
 		FROM
-			wallets
-		WHERE id = $1
-	`
+			wallets w
+		INNER JOIN users u ON u.id = w.identifier
+		INNER JOIN businesses b ON b.id = w.identifier
+		WHERE %s = $1
+	`, key)
 
 	var row pgx.Row
 	if tx != nil {
-		row = tx.QueryRow(ctx, query, id)
+		row = tx.QueryRow(ctx, query, value)
 	} else {
-		row = repo.DB.QueryRow(ctx, query, id)
+		row = repo.DB.QueryRow(ctx, query, value)
 	}
 
 	err := row.Scan(
@@ -110,12 +134,41 @@ func (repo *WalletRepository) GetById(id string, tx pgx.Tx) (*models.Wallet, err
 		&w.UpdatedAt,
 		&w.DeletedAt,
 		&w.Version,
+		&w.User.ID,
+		&w.User.Email,
+		&w.User.PhoneNumber,
+		&w.User.FirstName,
+		&w.User.LastName,
+		&w.User.IsPhoneNumberVerified,
+		&w.User.IsEmailVerified,
+		&w.User.RegStage,
+		&w.User.AccountType,
+		&w.User.BusinessID,
+		&w.User.CreatedAt,
+		&w.User.UpdatedAt,
+		&w.User.DeletedAt,
+		&w.User.Version,
+		&w.Business.ID,
+		&w.Business.Name,
+		&w.Business.Email,
+		&w.Business.CreatedAt,
+		&w.Business.UpdatedAt,
+		&w.Business.DeletedAt,
+		&w.Business.Version,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	return w, nil
+}
+
+func (repo *WalletRepository) GetById(id string, tx pgx.Tx) (*models.Wallet, error) {
+	return repo.getByKey("w.id", id, tx)
+}
+
+func (repo *WalletRepository) GetByIdentifier(id string, tx pgx.Tx) (*models.Wallet, error) {
+	return repo.getByKey("w.identifier", id, tx)
 }
 
 func (repo *WalletRepository) Delete(id string, tx pgx.Tx) (err error) {
@@ -144,52 +197,4 @@ func (repo *WalletRepository) SoftDelete(id string, tx pgx.Tx) error {
 	w.DeletedAt = models.NullTime{NullTime: sql.NullTime{Time: now}}
 
 	return repo.Update(w, tx)
-}
-
-func (repo *WalletRepository) GetByIdentifier(id string, tx pgx.Tx) (*models.Wallet, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
-	defer cancel()
-
-	w := new(models.Wallet)
-	query := `
-		SELECT
-			id,
-			identifier,
-			balance,
-			receivable_balance,
-			payable_balance,
-			account_type,
-			created_at,
-			updated_at,
-			deleted_at,
-			version
-		FROM
-			wallets
-		WHERE identifier = $1
-	`
-
-	var row pgx.Row
-	if tx != nil {
-		row = tx.QueryRow(ctx, query, id)
-	} else {
-		row = repo.DB.QueryRow(ctx, query, id)
-	}
-
-	err := row.Scan(
-		&w.ID,
-		&w.Identifier,
-		&w.Balance,
-		&w.Receivable,
-		&w.Payable,
-		&w.AccountType,
-		&w.CreatedAt,
-		&w.UpdatedAt,
-		&w.DeletedAt,
-		&w.Version,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return w, nil
 }

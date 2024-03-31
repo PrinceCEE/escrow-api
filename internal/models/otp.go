@@ -19,6 +19,5 @@ type Otp struct {
 	IsUsed    bool      `json:"is_used" db:"is_used"`
 	OtpType   string    `json:"otp_type" db:"otp_type"`
 	ExpiresIn time.Time `json:"expires_in" db:"expires_in"`
-	User      User      `json:"-" db:"-"`
 	ModelMixin
 }

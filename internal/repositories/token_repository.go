@@ -12,8 +12,8 @@ import (
 )
 
 type ITokenRepository interface {
-	Create(b *models.Token, tx pgx.Tx) error
-	Update(b *models.Token, tx pgx.Tx) error
+	Create(t *models.Token, tx pgx.Tx) error
+	Update(t *models.Token, tx pgx.Tx) error
 	GetById(id string, tx pgx.Tx) (*models.Token, error)
 	Delete(id string, tx pgx.Tx) error
 	SoftDelete(id string, tx pgx.Tx) error
@@ -76,7 +76,7 @@ func (repo *TokenRepository) Update(t *models.Token, tx pgx.Tx) error {
 	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&t.Version)
 }
 
-func (repo *TokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error) {
+func (repo *TokenRepository) getByKey(key string, value any, tx pgx.Tx) (*models.Token, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -99,9 +99,9 @@ func (repo *TokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error
 
 	var row pgx.Row
 	if tx != nil {
-		row = tx.QueryRow(ctx, query, id)
+		row = tx.QueryRow(ctx, query, value)
 	} else {
-		row = repo.DB.QueryRow(ctx, query, id)
+		row = repo.DB.QueryRow(ctx, query, value)
 	}
 
 	err := row.Scan(
@@ -120,6 +120,10 @@ func (repo *TokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error
 	}
 
 	return t, nil
+}
+
+func (repo *TokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error) {
+	return repo.getByKey("id", id, tx)
 }
 
 func (repo *TokenRepository) Delete(id string, tx pgx.Tx) (err error) {

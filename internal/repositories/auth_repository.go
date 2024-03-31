@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
@@ -70,12 +71,12 @@ func (repo *AuthRepository) Update(a *models.Auth, tx pgx.Tx) error {
 	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&a.Version)
 }
 
-func (repo *AuthRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) {
+func (repo *AuthRepository) getByKey(key string, value any, tx pgx.Tx) (*models.Auth, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
 	a := new(models.Auth)
-	query := `
+	query := fmt.Sprintf(`
 		SELECT
 			id,
 			user_id,
@@ -87,14 +88,14 @@ func (repo *AuthRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) 
 			version
 		FROM
 			auths
-		WHERE id = $1
-	`
+		WHERE %s = $1
+	`, key)
 
 	var row pgx.Row
 	if tx != nil {
-		row = tx.QueryRow(ctx, query, id)
+		row = tx.QueryRow(ctx, query, value)
 	} else {
-		row = repo.DB.QueryRow(ctx, query, id)
+		row = repo.DB.QueryRow(ctx, query, value)
 	}
 
 	err := row.Scan(
@@ -114,48 +115,12 @@ func (repo *AuthRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) 
 	return a, nil
 }
 
+func (repo *AuthRepository) GetById(id string, tx pgx.Tx) (*models.Auth, error) {
+	return repo.getByKey("id", id, tx)
+}
+
 func (repo *AuthRepository) GetByUserId(id string, tx pgx.Tx) (*models.Auth, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
-	defer cancel()
-
-	a := new(models.Auth)
-	query := `
-		SELECT
-			id,
-			user_id,
-			password,
-			password_history,
-			created_at,
-			updated_at,
-			deleted_at,
-			version
-		FROM
-			auths
-		WHERE user_id = $1
-	`
-
-	var row pgx.Row
-	if tx != nil {
-		row = tx.QueryRow(ctx, query, id)
-	} else {
-		row = repo.DB.QueryRow(ctx, query, id)
-	}
-
-	err := row.Scan(
-		&a.ID,
-		&a.UserID,
-		&a.Password,
-		&a.PasswordHistory,
-		&a.CreatedAt,
-		&a.UpdatedAt,
-		&a.DeletedAt,
-		&a.Version,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return a, nil
+	return repo.getByKey("user_id", id, tx)
 }
 
 func (repo *AuthRepository) Delete(id string, tx pgx.Tx) (err error) {

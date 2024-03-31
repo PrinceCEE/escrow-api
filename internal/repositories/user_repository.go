@@ -13,11 +13,12 @@ import (
 )
 
 type IUserRepository interface {
-	Create(b *models.User, tx pgx.Tx) error
-	Update(b *models.User, tx pgx.Tx) error
+	Create(u *models.User, tx pgx.Tx) error
+	Update(u *models.User, tx pgx.Tx) error
 	GetById(id string, tx pgx.Tx) (*models.User, error)
 	GetByEmail(email string, tx pgx.Tx) (*models.User, error)
 	GetByPhoneNumber(phone string, tx pgx.Tx) (*models.User, error)
+	GetByBusinessId(id string, tx pgx.Tx) (*models.User, error)
 	Delete(id string, tx pgx.Tx) error
 	SoftDelete(id string, tx pgx.Tx) error
 }
@@ -79,21 +80,30 @@ func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 	u := new(models.User)
 	query := fmt.Sprintf(`
 		SELECT
-			id,
-			email,
-			phone_number,
-			first_name,
-			last_name,
-			is_phone_number_verified,
-			is_email_verified,
-			reg_stage,
-			account_type,
-			created_at,
-			updated_at,
-			deleted_at,
-			version
+			u.id,
+			u.email,
+			u.phone_number,
+			u.first_name,
+			u.last_name,
+			u.is_phone_number_verified,
+			u.is_email_verified,
+			u.reg_stage,
+			u.account_type,
+			u.business_id,
+			u.created_at,
+			u.updated_at,
+			u.deleted_at,
+			u.version
+			b.id,
+			b.name,
+			b.email,
+			b.created_at,
+			b.updated_at,
+			b.deleted_at,
+			b.version
 		FROM
-			users
+			users u
+		LEFT JOIN businesses b ON b.id = u.business_id
 		WHERE
 			%s = $1
 			AND deleted_at IS NULL`,
@@ -117,10 +127,18 @@ func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 		&u.IsEmailVerified,
 		&u.RegStage,
 		&u.AccountType,
+		&u.BusinessID,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 		&u.DeletedAt,
 		&u.Version,
+		&u.Business.ID,
+		&u.Business.Name,
+		&u.Business.Email,
+		&u.Business.CreatedAt,
+		&u.Business.UpdatedAt,
+		&u.Business.DeletedAt,
+		&u.Business.Version,
 	)
 	if err != nil {
 		return nil, err
@@ -139,6 +157,10 @@ func (repo *UserRepository) GetByEmail(email string, tx pgx.Tx) (*models.User, e
 
 func (repo *UserRepository) GetByPhoneNumber(phone string, tx pgx.Tx) (*models.User, error) {
 	return repo.getByKey("phone_number", phone, tx)
+}
+
+func (repo *UserRepository) GetByBusinessId(id string, tx pgx.Tx) (*models.User, error) {
+	return repo.getByKey("business_id", id, tx)
 }
 
 func (repo *UserRepository) Delete(id string, tx pgx.Tx) (err error) {

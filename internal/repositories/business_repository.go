@@ -15,7 +15,6 @@ type IBusinessRepository interface {
 	Create(b *models.Business, tx pgx.Tx) error
 	Update(b *models.Business, tx pgx.Tx) error
 	GetById(id string, tx pgx.Tx) (*models.Business, error)
-	GetByUserID(id string, tx pgx.Tx) (*models.Business, error)
 	Delete(id string, tx pgx.Tx) error
 	SoftDelete(id string, tx pgx.Tx) error
 }
@@ -38,12 +37,12 @@ func (repo *BusinessRepository) Create(b *models.Business, tx pgx.Tx) error {
 	defer cancel()
 
 	query := `
-		INSERT INTO businesses (user_id, name, email, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO businesses (name, email, created_at, updated_at)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, version
 	`
 
-	args := []any{b.UserID, b.Name, b.Email, b.CreatedAt, b.UpdatedAt}
+	args := []any{b.Name, b.Email, b.CreatedAt, b.UpdatedAt}
 
 	if tx != nil {
 		return tx.QueryRow(ctx, query, args...).Scan(&b.ID, &b.Version)
@@ -70,7 +69,7 @@ func (repo *BusinessRepository) Update(b *models.Business, tx pgx.Tx) error {
 	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&b.Version)
 }
 
-func (repo *BusinessRepository) GetById(id string, tx pgx.Tx) (*models.Business, error) {
+func (repo *BusinessRepository) getByKey(key string, value any, tx pgx.Tx) (*models.Business, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -78,7 +77,6 @@ func (repo *BusinessRepository) GetById(id string, tx pgx.Tx) (*models.Business,
 	query := `
 		SELECT
 			id,
-			user_id,
 			name,
 			email,
 			created_at,
@@ -92,14 +90,13 @@ func (repo *BusinessRepository) GetById(id string, tx pgx.Tx) (*models.Business,
 
 	var row pgx.Row
 	if tx != nil {
-		row = tx.QueryRow(ctx, query, id)
+		row = tx.QueryRow(ctx, query, value)
 	} else {
-		row = repo.DB.QueryRow(ctx, query, id)
+		row = repo.DB.QueryRow(ctx, query, value)
 	}
 
 	err := row.Scan(
 		&b.ID,
-		&b.UserID,
 		&b.Name,
 		&b.Email,
 		&b.CreatedAt,
@@ -114,48 +111,8 @@ func (repo *BusinessRepository) GetById(id string, tx pgx.Tx) (*models.Business,
 	return b, nil
 }
 
-func (repo *BusinessRepository) GetByUserID(id string, tx pgx.Tx) (*models.Business, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
-	defer cancel()
-
-	b := new(models.Business)
-	query := `
-		SELECT
-			id,
-			user_id,
-			name,
-			email,
-			created_at,
-			updated_at,
-			deleted_at,
-			version
-		FROM
-			businesses
-		WHERE user_id = $1
-	`
-
-	var row pgx.Row
-	if tx != nil {
-		row = tx.QueryRow(ctx, query, id)
-	} else {
-		row = repo.DB.QueryRow(ctx, query, id)
-	}
-
-	err := row.Scan(
-		&b.ID,
-		&b.UserID,
-		&b.Name,
-		&b.Email,
-		&b.CreatedAt,
-		&b.UpdatedAt,
-		&b.DeletedAt,
-		&b.Version,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
+func (repo *BusinessRepository) GetById(id string, tx pgx.Tx) (*models.Business, error) {
+	return repo.getByKey("id", id, tx)
 }
 
 func (repo *BusinessRepository) Delete(id string, tx pgx.Tx) (err error) {
