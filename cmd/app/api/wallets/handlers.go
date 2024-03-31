@@ -9,6 +9,7 @@ import (
 	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
 	"github.com/Bupher-Co/bupher-api/config"
 	"github.com/Bupher-Co/bupher-api/internal/models"
+	"github.com/Bupher-Co/bupher-api/pkg/apis/paystack"
 	"github.com/Bupher-Co/bupher-api/pkg/json"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
 	"github.com/Bupher-Co/bupher-api/pkg/validator"
@@ -28,7 +29,6 @@ func (h *walletHandler) addBankAccount(w http.ResponseWriter, r *http.Request) {
 
 	walletRepo := h.c.GetWalletRepository()
 	bankAccountRepo := h.c.GetBankAccountRepository()
-	businessRepo := h.c.GetBusinessRepository()
 
 	err := json.ReadJSON(r.Body, body)
 	if err != nil {
@@ -49,46 +49,9 @@ func (h *walletHandler) addBankAccount(w http.ResponseWriter, r *http.Request) {
 
 	wallet := new(models.Wallet)
 	if user.AccountType == models.PersonalAccountType {
-		wallet, err = walletRepo.GetByIdentifier(user.ID.String(), tx)
-		if err != nil {
-			if !errors.Is(err, pgx.ErrNoRows) {
-				resp.Message = err.Error()
-				response.SendErrorResponse(w, resp, http.StatusUnauthorized)
-				return
-			}
-
-			wallet = &models.Wallet{AccountType: user.AccountType, Identifier: user.ID}
-			err = walletRepo.Create(wallet, tx)
-			if err != nil {
-				resp.Message = err.Error()
-				response.SendErrorResponse(w, resp, http.StatusInternalServerError)
-				return
-			}
-		}
+		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), tx)
 	} else {
-		business, err := businessRepo.GetByUserID(user.ID.String(), tx)
-		if err != nil {
-			resp.Message = err.Error()
-			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
-			return
-		}
-
-		wallet, err = walletRepo.GetByIdentifier(business.ID.String(), tx)
-		if err != nil {
-			if !errors.Is(err, pgx.ErrNoRows) {
-				resp.Message = err.Error()
-				response.SendErrorResponse(w, resp, http.StatusUnauthorized)
-				return
-			}
-
-			wallet = &models.Wallet{AccountType: user.AccountType, Identifier: business.ID}
-			err = walletRepo.Create(wallet, tx)
-			if err != nil {
-				resp.Message = err.Error()
-				response.SendErrorResponse(w, resp, http.StatusInternalServerError)
-				return
-			}
-		}
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), tx)
 	}
 
 	bankAccount := &models.BankAccount{
@@ -97,6 +60,7 @@ func (h *walletHandler) addBankAccount(w http.ResponseWriter, r *http.Request) {
 		AccountNumber: body.AccountNumber,
 		BVN:           body.BVN,
 		WalletID:      wallet.ID,
+		Wallet:        *wallet,
 	}
 	err = bankAccountRepo.Create(bankAccount, tx)
 	if err != nil {
@@ -123,10 +87,8 @@ func (h *walletHandler) deleteBankAccount(w http.ResponseWriter, r *http.Request
 	resp := response.ApiResponse{}
 	bankAccountRepo := h.c.GetBankAccountRepository()
 	walletRepo := h.c.GetWalletRepository()
-	businessRepo := h.c.GetBusinessRepository()
 
 	user := r.Context().Value(utils.ContextKey{}).(*models.User)
-	business, _ := businessRepo.GetByUserID(user.ID.String(), nil)
 	bankAccountId := r.URL.Query().Get("bank_account_id")
 
 	bankAccount, err := bankAccountRepo.GetById(bankAccountId, nil)
@@ -146,7 +108,7 @@ func (h *walletHandler) deleteBankAccount(w http.ResponseWriter, r *http.Request
 	if user.AccountType == models.PersonalAccountType {
 		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), nil)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(business.ID.String(), nil)
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), nil)
 	}
 
 	if bankAccount.WalletID.String() != wallet.ID.String() {
@@ -169,10 +131,9 @@ func (h *walletHandler) deleteBankAccount(w http.ResponseWriter, r *http.Request
 func (h *walletHandler) getBankAccounts(w http.ResponseWriter, r *http.Request) {
 	resp := response.ApiResponse{}
 	walletRepo := h.c.GetWalletRepository()
-	businessRepo := h.c.GetBusinessRepository()
+	bankAccountRepo := h.c.GetBankAccountRepository()
 
 	user := r.Context().Value(utils.ContextKey{}).(*models.User)
-	business, _ := businessRepo.GetByUserID(user.ID.String(), nil)
 	query := r.URL.Query()
 
 	var page, pageSize int64
@@ -201,7 +162,7 @@ func (h *walletHandler) getBankAccounts(w http.ResponseWriter, r *http.Request) 
 	if user.AccountType == models.PersonalAccountType {
 		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), nil)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(business.ID.String(), nil)
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), nil)
 	}
 
 	if wallet.ID.String() != body.WalletID {
@@ -210,16 +171,9 @@ func (h *walletHandler) getBankAccounts(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	offset := (body.Page - 1) * body.PageSize
-	args := []any{body.WalletID, offset, body.PageSize}
-	rows, err := h.c.GetDB().Query(context.Background(), `
-		SELECT * FROM bank_accounts
-		WHERE wallet_id = $1
-		ORDER BY created_at DESC
-		OFFSET $2
-		LIMIT $3`,
-		args...,
-	)
+	pagination := utils.GetPagination(body.Page, body.PageSize)
+
+	bankAccounts, err := bankAccountRepo.GetByWalletId(body.WalletID, pagination, nil)
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
@@ -237,15 +191,8 @@ func (h *walletHandler) getBankAccounts(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	bankAccounts, err := pgx.CollectRows(rows, pgx.RowToStructByName[models.BankAccount])
-	if err != nil {
-		resp.Message = err.Error()
-		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
-		return
-	}
-
 	resp.Message = "bank accounts fetched successfully"
-	resp.Data = map[string][]models.BankAccount{
+	resp.Data = map[string][]*models.BankAccount{
 		"bank_accounts": bankAccounts,
 	}
 	response.SendResponse(w, resp)
@@ -254,16 +201,14 @@ func (h *walletHandler) getBankAccounts(w http.ResponseWriter, r *http.Request) 
 func (h *walletHandler) getWallet(w http.ResponseWriter, r *http.Request) {
 	resp := response.ApiResponse{}
 	walletRepo := h.c.GetWalletRepository()
-	businessRepo := h.c.GetBusinessRepository()
 
 	user := r.Context().Value(utils.ContextKey{}).(*models.User)
-	business, _ := businessRepo.GetByUserID(user.ID.String(), nil)
 
 	wallet := new(models.Wallet)
 	if user.AccountType == models.PersonalAccountType {
 		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), nil)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(business.ID.String(), nil)
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), nil)
 	}
 
 	resp.Message = "wallet fetched successfully"
@@ -284,11 +229,18 @@ func (h *walletHandler) addFunds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	validationErrors := validator.ValidateData(body)
+	if validationErrors != nil {
+		resp.Message = response.ErrBadRequest.Error()
+		resp.Data = validationErrors
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
 	tx, _ := h.c.GetDB().Begin(context.Background())
 
 	walletRepo := h.c.GetWalletRepository()
 	walletHistoryRepo := h.c.GetWalletHistoryRepository()
-	businessRepo := h.c.GetBusinessRepository()
 
 	user := r.Context().Value(utils.ContextKey{}).(*models.User)
 
@@ -296,8 +248,7 @@ func (h *walletHandler) addFunds(w http.ResponseWriter, r *http.Request) {
 	if user.AccountType == models.PersonalAccountType {
 		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), tx)
 	} else {
-		business, _ := businessRepo.GetByUserID(user.ID.String(), tx)
-		wallet, _ = walletRepo.GetByIdentifier(business.ID.String(), tx)
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), tx)
 	}
 
 	wallet.Balance += body.Amount
@@ -314,6 +265,7 @@ func (h *walletHandler) addFunds(w http.ResponseWriter, r *http.Request) {
 		Type:     models.WalletHistoryDepositType,
 		Amount:   body.Amount,
 		Status:   models.WalletHistoryPending,
+		Wallet:   *wallet,
 	}
 	err = walletHistoryRepo.Create(walletHistory, tx)
 	if err != nil {
@@ -322,17 +274,188 @@ func (h *walletHandler) addFunds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// read into how to populate the struct in a model
-	// change the dependency to [user depends on business]
+	paystackResponse, err := paystack.InitiateTransaction(paystack.InitiateTransactionDto{
+		Email:     user.Email,
+		Amount:    strconv.FormatInt(int64(body.Amount), 10),
+		Reference: walletHistory.ID.String(),
+	})
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	resp.Message = "wallet funded successfully"
+	resp.Data = map[string]any{
+		"wallet_history": walletHistory,
+		"payment_data":   paystackResponse,
+	}
 	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }
 
 func (h *walletHandler) withrawFunds(w http.ResponseWriter, r *http.Request) {
-	resp := response.ApiResponse{Message: "not implemented"}
-	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
+	resp := response.ApiResponse{}
+	body := new(withrawFundsDto)
+
+	err := json.ReadJSON(r.Body, body)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	validationErrors := validator.ValidateData(body)
+	if validationErrors != nil {
+		resp.Message = response.ErrBadRequest.Error()
+		resp.Data = validationErrors
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	user := r.Context().Value(utils.ContextKey{}).(*models.User)
+
+	walletRepo := h.c.GetWalletRepository()
+	walletHistoryRepo := h.c.GetWalletHistoryRepository()
+
+	tx, _ := h.c.GetDB().Begin(context.Background())
+
+	wallet := new(models.Wallet)
+	if user.AccountType == models.PersonalAccountType {
+		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), tx)
+	} else {
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), tx)
+	}
+
+	wallet.Balance -= body.Amount
+	wallet.Receivable -= body.Amount
+	err = walletRepo.Update(wallet, tx)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	walletHistory := &models.WalletHistory{
+		WalletID: wallet.ID,
+		Type:     models.WalletHistoryWithdrawalType,
+		Amount:   body.Amount,
+		Status:   models.WalletHistoryPending,
+		Wallet:   *wallet,
+	}
+	err = walletHistoryRepo.Create(walletHistory, tx)
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	// TODO - make transfer through paystack
+
+	resp.Message = "funds successfully withdrawn"
+	response.SendResponse(w, resp)
 }
 
 func (h *walletHandler) getWalletHistories(w http.ResponseWriter, r *http.Request) {
+	resp := response.ApiResponse{}
+
+	walletRepo := h.c.GetWalletRepository()
+	walletHistoryRepo := h.c.GetWalletHistoryRepository()
+
+	user := r.Context().Value(utils.ContextKey{}).(*models.User)
+	query := r.URL.Query()
+
+	var page, pageSize int64
+	if query.Get("page") != "" {
+		page, _ = strconv.ParseInt(query.Get("page"), 10, 64)
+	}
+	if query.Get("page_size") != "" {
+		pageSize, _ = strconv.ParseInt(query.Get("page_size"), 10, 64)
+	}
+
+	body := &getWalletHistoriesQueryDto{
+		WalletID: query.Get("wallet_id"),
+		Page:     utils.GetPage(int(page)),
+		PageSize: utils.GetPageSize(int(pageSize)),
+	}
+
+	validationErrors := validator.ValidateData(body)
+	if validationErrors != nil {
+		resp.Message = response.ErrBadRequest.Error()
+		resp.Data = validationErrors
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	wallet := new(models.Wallet)
+	if user.AccountType == models.PersonalAccountType {
+		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), nil)
+	} else {
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), nil)
+	}
+
+	if body.WalletID != wallet.ID.String() {
+		resp.Message = "forbidden"
+		response.SendErrorResponse(w, resp, http.StatusForbidden)
+		return
+	}
+
+	pagination := utils.GetPagination(body.Page, body.PageSize)
+	walletHistories, err := walletHistoryRepo.GetByWalletId(body.WalletID, pagination, nil)
+	if err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			resp.Message = "wallet histories fetched successfully"
+			resp.Data = map[string]any{
+				"wallet_histories": []any{},
+			}
+			response.SendResponse(w, resp)
+			return
+		default:
+			resp.Message = err.Error()
+			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	var total int
+	err = h.c.GetDB().QueryRow(context.Background(), `
+		SELECT COUNT(*) AS total FROM wallet_histories h
+		INNER JOIN wallets w ON w.id = h.wallet_id
+		WHERE h.wallet_id = $1
+	`, body.WalletID).Scan(&total)
+
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	resp.Message = "wallet histories fetched successfully"
+	resp.Data = map[string]any{
+		"wallet_histories": walletHistories,
+	}
+	resp.Meta.Page = body.Page
+	resp.Meta.Page = body.PageSize
+	resp.Meta.Total = total
+	resp.Meta.TotalPages = int(total / body.PageSize)
+
+	response.SendResponse(w, resp)
+}
+
+func (h *walletHandler) handlePaystackWebhook(w http.ResponseWriter, r *http.Request) {
 	resp := response.ApiResponse{Message: "not implemented"}
 	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
 }

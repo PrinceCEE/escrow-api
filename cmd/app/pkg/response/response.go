@@ -19,12 +19,12 @@ var (
 )
 
 type ApiResponseMeta struct {
-	Page         *int    `json:"page,omitempty"`
-	PageSize     *int    `json:"page_size,omitempty"`
-	Total        *int    `json:"total,omitempty"`
-	TotalPages   *int    `json:"total_pages,omitempty"`
-	AccessToken  *string `json:"access_token,omitempty"`
-	RefreshToken *string `json:"refresh_token,omitempty"`
+	Page         int    `json:"page,omitempty"`
+	PageSize     int    `json:"page_size,omitempty"`
+	Total        int    `json:"total,omitempty"`
+	TotalPages   int    `json:"total_pages,omitempty"`
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 type ApiResponse struct {

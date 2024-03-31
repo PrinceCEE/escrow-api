@@ -5,6 +5,7 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/internal/repositories"
+	"github.com/Bupher-Co/bupher-api/pkg/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/mock"
@@ -39,6 +40,6 @@ func (r *TestBankAccountRepository) SoftDelete(id string, tx pgx.Tx) error {
 	return r.repo.SoftDelete(id, tx)
 }
 
-func (r *TestBankAccountRepository) GetByWalletId(id string, tx pgx.Tx) ([]*models.BankAccount, error) {
-	return r.repo.GetByWalletId(id, tx)
+func (r *TestBankAccountRepository) GetByWalletId(id string, pagination utils.Pagination, tx pgx.Tx) ([]*models.BankAccount, error) {
+	return r.repo.GetByWalletId(id, pagination, tx)
 }

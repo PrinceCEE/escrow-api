@@ -19,6 +19,18 @@ const (
 
 type ContextKey struct{}
 
+type Pagination struct {
+	Offset int
+	Limit  int
+}
+
+func GetPagination(page, pageSize int) Pagination {
+	return Pagination{
+		Offset: (page - 1) * pageSize,
+		Limit:  pageSize,
+	}
+}
+
 func StructToMap(data any) (map[string]any, error) {
 	mapData := make(map[string]any)
 

@@ -405,8 +405,8 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		resp.Message = RegStage3Msg
 		resp.Data = map[string]any{"user": user}
 		resp.Meta = response.ApiResponseMeta{
-			AccessToken:  &accessTokenStr,
-			RefreshToken: &refreshTokenStr,
+			AccessToken:  accessTokenStr,
+			RefreshToken: refreshTokenStr,
 		}
 	}
 
@@ -522,8 +522,8 @@ func (h *authHandler) signIn(w http.ResponseWriter, r *http.Request) {
 
 	resp.Message = "signed in successfully"
 	resp.Meta = response.ApiResponseMeta{
-		AccessToken:  &accessTokenStr,
-		RefreshToken: &refreshTokenStr,
+		AccessToken:  accessTokenStr,
+		RefreshToken: refreshTokenStr,
 	}
 
 	response.SendResponse(w, resp)

@@ -16,7 +16,7 @@ type IWalletHistoryRepository interface {
 	Create(h *models.WalletHistory, tx pgx.Tx) error
 	Update(h *models.WalletHistory, tx pgx.Tx) error
 	GetById(id string, tx pgx.Tx) (*models.WalletHistory, error)
-	GetByWalletId(id string, tx pgx.Tx) ([]*models.WalletHistory, error)
+	GetByWalletId(id string, pagination utils.Pagination, tx pgx.Tx) ([]*models.WalletHistory, error)
 	Delete(id string, tx pgx.Tx) error
 	SoftDelete(id string, tx pgx.Tx) error
 }
@@ -170,7 +170,7 @@ func (repo *WalletHistoryRepository) SoftDelete(id string, tx pgx.Tx) error {
 	return repo.Update(h, tx)
 }
 
-func (repo *WalletHistoryRepository) GetByWalletId(id string, tx pgx.Tx) ([]*models.WalletHistory, error) {
+func (repo *WalletHistoryRepository) GetByWalletId(id string, pagination utils.Pagination, tx pgx.Tx) ([]*models.WalletHistory, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -199,18 +199,21 @@ func (repo *WalletHistoryRepository) GetByWalletId(id string, tx pgx.Tx) ([]*mod
 			wallet_histories h
 		INNER JOIN wallets w ON w.id = h.wallet_id
 		WHERE h.wallet_id = $1
+		OFFSET $2
+		LIMIT $3
 	`
 
 	var rows pgx.Rows
+	args := []any{id, pagination.Offset, pagination.Limit}
 	if tx != nil {
-		_rows, err := tx.Query(ctx, query, id)
+		_rows, err := tx.Query(ctx, query, args...)
 		if err != nil {
 			return nil, err
 		}
 
 		rows = _rows
 	} else {
-		_rows, err := repo.DB.Query(ctx, query, id)
+		_rows, err := repo.DB.Query(ctx, query, args...)
 		if err != nil {
 			return nil, err
 		}

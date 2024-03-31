@@ -16,7 +16,7 @@ type IBankAccountRepository interface {
 	Create(b *models.BankAccount, tx pgx.Tx) error
 	Update(b *models.BankAccount, tx pgx.Tx) error
 	GetById(id string, tx pgx.Tx) (*models.BankAccount, error)
-	GetByWalletId(id string, tx pgx.Tx) ([]*models.BankAccount, error)
+	GetByWalletId(id string, pagination utils.Pagination, tx pgx.Tx) ([]*models.BankAccount, error)
 	Delete(id string, tx pgx.Tx) error
 	SoftDelete(id string, tx pgx.Tx) error
 }
@@ -172,7 +172,7 @@ func (repo *BankAccountRepository) SoftDelete(id string, tx pgx.Tx) error {
 	return repo.Update(b, tx)
 }
 
-func (repo *BankAccountRepository) GetByWalletId(id string, tx pgx.Tx) ([]*models.BankAccount, error) {
+func (repo *BankAccountRepository) GetByWalletId(id string, pagination utils.Pagination, tx pgx.Tx) ([]*models.BankAccount, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -202,11 +202,14 @@ func (repo *BankAccountRepository) GetByWalletId(id string, tx pgx.Tx) ([]*model
 			bank_accounts b
 		INNER JOIN wallets w ON w.id = b.wallet_id
 		WHERE b.wallet_id = $1
+		OFFSET $2
+		LIMIT $3
 	`
 
+	args := []any{id, pagination.Offset, pagination.Limit}
 	var rows pgx.Rows
 	if tx != nil {
-		_rows, err := tx.Query(ctx, query, id)
+		_rows, err := tx.Query(ctx, query, args...)
 		if err != nil {
 			return nil, err
 		}
