@@ -8,5 +8,7 @@ type Wallet struct {
 	Payable     int       `json:"payable_balance" db:"payable_balance"`
 	AccountType string    `json:"account_type" db:"account_type"`
 	Identifier  uuid.UUID `json:"identifier" db:"identifier"`
+	User        User      `json:"user,omitempty" db:"-"`
+	Business    Business  `json:"business,omitempty" db:"-"`
 	ModelMixin
 }

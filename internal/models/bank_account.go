@@ -8,5 +8,6 @@ type BankAccount struct {
 	AccountNumber string    `json:"account_number" db:"account_number"`
 	BVN           string    `json:"bvn" db:"bvn"`
 	WalletID      uuid.UUID `json:"wallet_id" db:"wallet_id"`
+	Wallet        Wallet    `json:"wallet,omitempty" db:"-"`
 	ModelMixin
 }

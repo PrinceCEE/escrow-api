@@ -18,5 +18,6 @@ type WalletHistory struct {
 	Type     string    `json:"type" db:"type"`
 	Amount   int       `json:"amount" db:"amount"`
 	Status   string    `json:"status" db:"status"`
+	Wallet   Wallet    `json:"wallet,omitempty" db:"-"`
 	ModelMixin
 }

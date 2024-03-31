@@ -1,5 +1,7 @@
 package models
 
+import "github.com/gofrs/uuid"
+
 const (
 	PersonalAccountType = "personal"
 	BusinessAccountType = "business"
@@ -14,5 +16,7 @@ type User struct {
 	IsEmailVerified       bool       `json:"is_email_verified" db:"is_email_verified"`
 	RegStage              int        `json:"reg_stage" db:"reg_stage"`
 	AccountType           string     `json:"account_type" db:"account_type"`
+	BusinessID            uuid.UUID  `json:"business_id" db:"business_id"`
+	Business              Business   `json:"business,omitempty" db:"-"`
 	ModelMixin
 }

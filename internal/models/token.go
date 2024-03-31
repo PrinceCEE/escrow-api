@@ -16,5 +16,6 @@ type Token struct {
 	UserID    uuid.UUID `json:"user_id" db:"user_id"`
 	TokenType TokenType `json:"token_type" db:"token_type"`
 	InUse     bool      `json:"in_use" db:"in_use"`
+	User      User      `json:"-" db:"-"`
 	ModelMixin
 }
