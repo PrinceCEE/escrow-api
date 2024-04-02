@@ -1,9 +1,14 @@
 package utils
 
 import (
+	"crypto/hmac"
+	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand"
+	"os"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -134,4 +139,20 @@ func GetPageSize(v int) int {
 	}
 
 	return v
+}
+
+func ComputeHMAC(b io.ReadCloser) (string, error) {
+	jsonData, err := json.Marshal(b)
+	if err != nil {
+		return "", err
+	}
+
+	h := hmac.New(sha512.New, []byte(os.Getenv("PAYSTACK_SECRET_KEY")))
+	_, err = h.Write(jsonData)
+
+	if err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(h.Sum(nil)), nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
 	"github.com/Bupher-Co/bupher-api/pkg/validator"
 	"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog"
 )
 
 type walletHandler struct {
@@ -24,13 +25,12 @@ func (h *walletHandler) addBankAccount(w http.ResponseWriter, r *http.Request) {
 	resp := response.ApiResponse{}
 	body := new(addNewAccountDto)
 
-	tx, _ := h.c.GetDB().Begin(context.Background())
-	defer tx.Rollback(context.Background())
-
 	walletRepo := h.c.GetWalletRepository()
 	bankAccountRepo := h.c.GetBankAccountRepository()
 
 	err := json.ReadJSON(r.Body, body)
+	defer r.Body.Close()
+
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -44,6 +44,9 @@ func (h *walletHandler) addBankAccount(w http.ResponseWriter, r *http.Request) {
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
 		return
 	}
+
+	tx, _ := h.c.GetDB().Begin(context.Background())
+	defer tx.Rollback(context.Background())
 
 	user := r.Context().Value(utils.ContextKey{}).(*models.User)
 
@@ -223,6 +226,8 @@ func (h *walletHandler) addFunds(w http.ResponseWriter, r *http.Request) {
 	body := new(addFundsDto)
 
 	err := json.ReadJSON(r.Body, body)
+	defer r.Body.Close()
+
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -251,9 +256,6 @@ func (h *walletHandler) addFunds(w http.ResponseWriter, r *http.Request) {
 		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), tx)
 	}
 
-	wallet.Balance += body.Amount
-	wallet.Receivable += body.Amount
-	err = walletRepo.Update(wallet, tx)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -305,6 +307,8 @@ func (h *walletHandler) withrawFunds(w http.ResponseWriter, r *http.Request) {
 	body := new(withrawFundsDto)
 
 	err := json.ReadJSON(r.Body, body)
+	defer r.Body.Close()
+
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -456,6 +460,97 @@ func (h *walletHandler) getWalletHistories(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *walletHandler) handlePaystackWebhook(w http.ResponseWriter, r *http.Request) {
-	resp := response.ApiResponse{Message: "not implemented"}
-	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
+	resp := response.ApiResponse{}
+
+	paystackSig := r.Header.Get("x-paystack-signature")
+	if paystackSig == "" {
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	hash, err := utils.ComputeHMAC(r.Body)
+	if err != nil {
+		h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	if hash != paystackSig {
+		h.c.GetLogger().Log(zerolog.InfoLevel, "forbidden", nil, err)
+		response.SendErrorResponse(w, resp, http.StatusForbidden)
+		return
+	}
+
+	tx, _ := h.c.GetDB().Begin(context.Background())
+
+	// read the untyped response body so as to know the event
+	var tmp map[string]any
+	err = json.ReadJSON(r.Body, tmp)
+	if err != nil {
+		h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+
+	switch tmp["event"] {
+	case "charge.success":
+		body, err := json.ReadTypedJSON[webhookDto[tranactionData]](r.Body)
+		defer r.Body.Close()
+
+		if err != nil {
+			h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+			response.SendErrorResponse(w, resp, http.StatusBadRequest)
+			return
+		}
+
+		validationErrors := validator.ValidateData(body)
+		if validationErrors != nil {
+			h.c.GetLogger().Log(zerolog.InfoLevel, "validation error", validationErrors, err)
+			response.SendErrorResponse(w, resp, http.StatusBadRequest)
+			return
+		}
+
+		walletHistoryRepo := h.c.GetWalletHistoryRepository()
+		walletRepo := h.c.GetWalletRepository()
+
+		walletHistory, err := walletHistoryRepo.GetById(body.Data.Reference, tx)
+		if err != nil {
+			h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+			response.SendErrorResponse(w, resp, http.StatusBadRequest)
+			return
+		}
+
+		wallet, err := walletRepo.GetById(walletHistory.WalletID.String(), tx)
+		if err != nil {
+			h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+			response.SendErrorResponse(w, resp, http.StatusBadRequest)
+			return
+		}
+
+		walletHistory.Status = models.WalletHistorySuccessful
+		wallet.Balance += walletHistory.Amount
+		wallet.Receivable += walletHistory.Amount
+
+		err = walletHistoryRepo.Update(walletHistory, tx)
+		if err != nil {
+			h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+			response.SendErrorResponse(w, resp, http.StatusBadRequest)
+			return
+		}
+
+		err = walletRepo.Update(wallet, tx)
+		if err != nil {
+			h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+			response.SendErrorResponse(w, resp, http.StatusBadRequest)
+			return
+		}
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
+	}
+	response.SendResponse(w, resp)
 }
