@@ -38,6 +38,7 @@ const setupTypesSql = `
 		is_email_verified BOOLEAN DEFAULT false,
 		reg_stage INT CHECK (reg_stage IN (1, 2, 3)) NOT NULL,
 		account_type ACCOUNT_TYPE_ENUM NOT NULL,
+		business_id UUID REFERENCES businesses,
 		created_at TIMESTAMPTZ NOT NULL,
 		updated_at TIMESTAMPTZ NOT NULL,
 		deleted_at TIMESTAMPTZ,
@@ -46,7 +47,6 @@ const setupTypesSql = `
 
 	CREATE TABLE IF NOT EXISTS businesses (
 		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-		user_id UUID REFERENCES users NOT NULL,
 		name VARCHAR(80) NOT NULL,
 		email VARCHAR(255) NOT NULL UNIQUE,
 		created_at TIMESTAMPTZ NOT NULL,
@@ -115,7 +115,7 @@ const setupTypesSql = `
 		deleted_at TIMESTAMPTZ,
 		version INT DEFAULT 1
 	);
-	
+
 	CREATE TABLE IF NOT EXISTS wallet_histories (
 		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 		wallet_id UUID REFERENCES wallets NOT NULL,
@@ -127,7 +127,7 @@ const setupTypesSql = `
 		deleted_at TIMESTAMPTZ,
 		version INT DEFAULT 1
 	);
-	
+
 	CREATE TABLE IF NOT EXISTS bank_accounts (
 		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 		wallet_id UUID NOT NULL,
@@ -148,12 +148,12 @@ var tearDownTypesSql = `
 	DROP TABLE IF EXISTS tokens;
 	DROP TABLE IF EXISTS events;
 	DROP TABLE IF EXISTS auths;
-	DROP TABLE IF EXISTS businesses;
 	DROP TABLE IF EXISTS otps;
-	DROP TABLE IF EXISTS users;
 	DROP TABLE IF EXISTS wallets;
 	DROP TABLE IF EXISTS wallet_histories;
 	DROP TABLE IF EXISTS bank_accounts;
+	DROP TABLE IF EXISTS users;
+	DROP TABLE IF EXISTS businesses;
 
 	DROP TYPE IF EXISTS ACCOUNT_TYPE_ENUM;
 	DROP TYPE IF EXISTS EVENT_ENVIRONMENT_ENUM;
