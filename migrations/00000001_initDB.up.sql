@@ -14,27 +14,29 @@ CREATE TYPE WITHDRAWAL_TYPE_ENUM AS ENUM (
   "Deposit"
 );
 
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS businesses (
 	id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+	name VARCHAR(80) NOT NULL,
 	email VARCHAR(255) NOT NULL UNIQUE,
-	phone_number VARCHAR(20) UNIQUE,
-	first_name VARCHAR(80),
-	last_name VARCHAR(80),
-	is_phone_number_verified BOOLEAN DEFAULT false,
-	is_email_verified BOOLEAN DEFAULT false,
-	reg_stage INT CHECK (reg_stage IN (1, 2, 3)) NOT NULL,
-	account_type ACCOUNT_TYPE_ENUM NOT NULL,
-	business_id UUID REFERENCES businesses,
+	image_url TEXT,
 	created_at TIMESTAMPTZ NOT NULL,
 	updated_at TIMESTAMPTZ NOT NULL,
 	deleted_at TIMESTAMPTZ,
 	version INT NOT NULL DEFAULT 1
 );
 
-CREATE TABLE IF NOT EXISTS businesses (
+CREATE TABLE IF NOT EXISTS users (
 	id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-	name VARCHAR(80) NOT NULL,
 	email VARCHAR(255) NOT NULL UNIQUE,
+	phone_number VARCHAR(20) UNIQUE,
+	first_name VARCHAR(80),
+	last_name VARCHAR(80),
+	image_url TEXT,
+	is_phone_number_verified BOOLEAN DEFAULT false,
+	is_email_verified BOOLEAN DEFAULT false,
+	reg_stage INT CHECK (reg_stage IN (1, 2, 3)) NOT NULL,
+	account_type ACCOUNT_TYPE_ENUM NOT NULL,
+	business_id UUID REFERENCES businesses,
 	created_at TIMESTAMPTZ NOT NULL,
 	updated_at TIMESTAMPTZ NOT NULL,
 	deleted_at TIMESTAMPTZ,

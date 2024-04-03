@@ -18,5 +18,6 @@ type User struct {
 	AccountType           string     `json:"account_type" db:"account_type"`
 	BusinessID            uuid.UUID  `json:"business_id" db:"business_id"`
 	Business              Business   `json:"business,omitempty" db:"-"`
+	ImageUrl              string     `json:"image_url,omitempty" db:"image_url"`
 	ModelMixin
 }
