@@ -8,6 +8,7 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -86,8 +87,7 @@ func (repo *WalletHistoryRepository) getByKey(key string, value any, tx pgx.Tx) 
 			h.created_at,
 			h.updated_at,
 			h.deleted_at,
-			h.version
-			w.id,
+			h.version,
 			w.identifier,
 			w.balance,
 			w.receivable_balance,
@@ -110,9 +110,11 @@ func (repo *WalletHistoryRepository) getByKey(key string, value any, tx pgx.Tx) 
 		row = repo.DB.QueryRow(ctx, query, value)
 	}
 
+	var id, walletId uuid.UUID
+	var wallet models.Wallet
 	err := row.Scan(
-		&h.ID,
-		&h.WalletID,
+		&id,
+		&walletId,
 		&h.Type,
 		&h.Amount,
 		&h.Status,
@@ -120,21 +122,23 @@ func (repo *WalletHistoryRepository) getByKey(key string, value any, tx pgx.Tx) 
 		&h.UpdatedAt,
 		&h.DeletedAt,
 		&h.Version,
-		&h.Wallet.ID,
-		&h.Wallet.Identifier,
-		&h.Wallet.Balance,
-		&h.Wallet.Receivable,
-		&h.Wallet.Payable,
-		&h.Wallet.AccountType,
-		&h.Wallet.CreatedAt,
-		&h.Wallet.UpdatedAt,
-		&h.Wallet.DeletedAt,
-		&h.Wallet.Version,
+		&wallet.Identifier,
+		&wallet.Balance,
+		&wallet.Receivable,
+		&wallet.Payable,
+		&wallet.AccountType,
+		&wallet.CreatedAt,
+		&wallet.UpdatedAt,
+		&wallet.DeletedAt,
+		&wallet.Version,
 	)
 	if err != nil {
 		return nil, err
 	}
 
+	h.ID = id.String()
+	h.WalletID = walletId.String()
+	wallet.ID = walletId.String()
 	return h, nil
 }
 
@@ -185,7 +189,6 @@ func (repo *WalletHistoryRepository) GetByWalletId(id string, pagination utils.P
 			h.updated_at,
 			h.deleted_at,
 			h.version
-			w.id,
 			w.identifier,
 			w.balance,
 			w.receivable_balance,
@@ -223,10 +226,13 @@ func (repo *WalletHistoryRepository) GetByWalletId(id string, pagination utils.P
 
 	walletHistories := []*models.WalletHistory{}
 	for rows.Next() {
+		var id, walletId uuid.UUID
 		var h models.WalletHistory
+		var wallet models.Wallet
+
 		err := rows.Scan(
-			&h.ID,
-			&h.WalletID,
+			&id,
+			&walletId,
 			&h.Type,
 			&h.Amount,
 			&h.Status,
@@ -234,22 +240,24 @@ func (repo *WalletHistoryRepository) GetByWalletId(id string, pagination utils.P
 			&h.UpdatedAt,
 			&h.DeletedAt,
 			&h.Version,
-			&h.Wallet.ID,
-			&h.Wallet.Identifier,
-			&h.Wallet.Balance,
-			&h.Wallet.Receivable,
-			&h.Wallet.Payable,
-			&h.Wallet.AccountType,
-			&h.Wallet.CreatedAt,
-			&h.Wallet.UpdatedAt,
-			&h.Wallet.DeletedAt,
-			&h.Wallet.Version,
+			&wallet.Identifier,
+			&wallet.Balance,
+			&wallet.Receivable,
+			&wallet.Payable,
+			&wallet.AccountType,
+			&wallet.CreatedAt,
+			&wallet.UpdatedAt,
+			&wallet.DeletedAt,
+			&wallet.Version,
 		)
 
 		if err != nil {
 			return nil, err
 		}
 
+		h.ID = id.String()
+		h.WalletID = walletId.String()
+		wallet.ID = walletId.String()
 		walletHistories = append(walletHistories, &h)
 	}
 

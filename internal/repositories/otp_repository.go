@@ -8,6 +8,7 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -54,11 +55,24 @@ func (repo *OtpRepository) Create(otp *models.Otp, tx pgx.Tx) error {
 		otp.UpdatedAt,
 	}
 
+	var id uuid.UUID
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(&otp.ID, &otp.Version)
+		err := tx.QueryRow(ctx, query, args...).Scan(&id, &otp.Version)
+		if err != nil {
+			return err
+		}
+
+		otp.ID = id.String()
+		return nil
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(&otp.ID, &otp.Version)
+	err := repo.DB.QueryRow(ctx, query, args...).Scan(&id, &otp.Version)
+	if err != nil {
+		return err
+	}
+
+	otp.ID = id.String()
+	return nil
 }
 
 func (repo *OtpRepository) Update(otp *models.Otp, tx pgx.Tx) error {
@@ -83,6 +97,7 @@ func (repo *OtpRepository) getByKey(key string, value any, tx pgx.Tx) (*models.O
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
+	var id, userId uuid.UUID
 	otp := new(models.Otp)
 	query := `
 		SELECT
@@ -109,8 +124,8 @@ func (repo *OtpRepository) getByKey(key string, value any, tx pgx.Tx) (*models.O
 	}
 
 	err := row.Scan(
-		&otp.ID,
-		&otp.UserID,
+		&id,
+		&userId,
 		&otp.Code,
 		&otp.IsUsed,
 		&otp.OtpType,
@@ -123,6 +138,9 @@ func (repo *OtpRepository) getByKey(key string, value any, tx pgx.Tx) (*models.O
 	if err != nil {
 		return nil, err
 	}
+
+	otp.ID = id.String()
+	otp.UserID = userId.String()
 
 	return otp, nil
 }
@@ -161,9 +179,10 @@ func (repo *OtpRepository) GetOneByWhere(where string, args []any, tx pgx.Tx) (*
 		row = repo.DB.QueryRow(ctx, query, args...)
 	}
 
+	var id, userId uuid.UUID
 	err := row.Scan(
-		&otp.ID,
-		&otp.UserID,
+		&id,
+		&userId,
 		&otp.Code,
 		&otp.IsUsed,
 		&otp.OtpType,
@@ -177,6 +196,9 @@ func (repo *OtpRepository) GetOneByWhere(where string, args []any, tx pgx.Tx) (*
 	if err != nil {
 		return nil, err
 	}
+
+	otp.ID = id.String()
+	otp.UserID = userId.String()
 
 	return otp, nil
 }

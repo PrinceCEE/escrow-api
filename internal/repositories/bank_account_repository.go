@@ -8,6 +8,7 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -46,11 +47,25 @@ func (repo *BankAccountRepository) Create(b *models.BankAccount, tx pgx.Tx) erro
 
 	args := []any{b.WalletID, b.BankName, b.AccountName, b.AccountNumber, b.BVN, b.CreatedAt, b.UpdatedAt}
 
+	var id uuid.UUID
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(&b.ID, &b.Version)
+		err := tx.QueryRow(ctx, query, args...).Scan(&id, &b.Version)
+		if err != nil {
+			return err
+		}
+
+		b.ID = id.String()
+		return nil
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(&b.ID, &b.Version)
+	err := repo.DB.QueryRow(ctx, query, args...).Scan(&id, &b.Version)
+	if err != nil {
+		return err
+	}
+
+	b.ID = id.String()
+
+	return nil
 }
 
 func (repo *BankAccountRepository) Update(b *models.BankAccount, tx pgx.Tx) error {
@@ -88,7 +103,6 @@ func (repo *BankAccountRepository) getByKey(key string, value any, tx pgx.Tx) (*
 			b.updated_at,
 			b.deleted_at,
 			b.version
-			w.id,
 			w.balance,
 			w.receivable_balance,
 			w.payable_balance,
@@ -111,9 +125,11 @@ func (repo *BankAccountRepository) getByKey(key string, value any, tx pgx.Tx) (*
 		row = repo.DB.QueryRow(ctx, query, value)
 	}
 
+	var accountId, walletId uuid.UUID
+	var wallet models.Wallet
 	err := row.Scan(
-		&b.ID,
-		&b.WalletID,
+		&accountId,
+		&walletId,
 		&b.BankName,
 		&b.AccountName,
 		&b.AccountNumber,
@@ -122,21 +138,24 @@ func (repo *BankAccountRepository) getByKey(key string, value any, tx pgx.Tx) (*
 		&b.UpdatedAt,
 		&b.DeletedAt,
 		&b.Version,
-		&b.Wallet.ID,
-		&b.Wallet.Balance,
-		&b.Wallet.Receivable,
-		&b.Wallet.Payable,
-		&b.Wallet.AccountType,
-		&b.Wallet.Identifier,
-		&b.Wallet.CreatedAt,
-		&b.Wallet.UpdatedAt,
-		&b.Wallet.DeletedAt,
-		&b.Wallet.Version,
+		&wallet.Balance,
+		&wallet.Receivable,
+		&wallet.Payable,
+		&wallet.AccountType,
+		&wallet.Identifier,
+		&wallet.CreatedAt,
+		&wallet.UpdatedAt,
+		&wallet.DeletedAt,
+		&wallet.Version,
 	)
+
 	if err != nil {
 		return nil, err
 	}
 
+	b.ID = accountId.String()
+	b.WalletID = walletId.String()
+	wallet.ID = walletId.String()
 	return b, nil
 }
 
@@ -188,7 +207,6 @@ func (repo *BankAccountRepository) GetByWalletId(id string, pagination utils.Pag
 			b.updated_at,
 			b.deleted_at,
 			b.version
-			w.id,
 			w.balance,
 			w.receivable_balance,
 			w.payable_balance,
@@ -226,10 +244,13 @@ func (repo *BankAccountRepository) GetByWalletId(id string, pagination utils.Pag
 
 	bankAccounts := []*models.BankAccount{}
 	for rows.Next() {
+		var accountId, walletId uuid.UUID
+		var wallet models.Wallet
 		var b models.BankAccount
+
 		err := rows.Scan(
-			&b.ID,
-			&b.WalletID,
+			&accountId,
+			&walletId,
 			&b.BankName,
 			&b.AccountName,
 			&b.AccountNumber,
@@ -238,21 +259,24 @@ func (repo *BankAccountRepository) GetByWalletId(id string, pagination utils.Pag
 			&b.UpdatedAt,
 			&b.DeletedAt,
 			&b.Version,
-			&b.Wallet.ID,
-			&b.Wallet.Balance,
-			&b.Wallet.Receivable,
-			&b.Wallet.Payable,
-			&b.Wallet.AccountType,
-			&b.Wallet.Identifier,
-			&b.Wallet.CreatedAt,
-			&b.Wallet.UpdatedAt,
-			&b.Wallet.DeletedAt,
-			&b.Wallet.Version,
+			&wallet.Balance,
+			&wallet.Receivable,
+			&wallet.Payable,
+			&wallet.AccountType,
+			&wallet.Identifier,
+			&wallet.CreatedAt,
+			&wallet.UpdatedAt,
+			&wallet.DeletedAt,
+			&wallet.Version,
 		)
 
 		if err != nil {
 			return nil, err
 		}
+
+		b.ID = accountId.String()
+		b.WalletID = walletId.String()
+		wallet.ID = walletId.String()
 
 		bankAccounts = append(bankAccounts, &b)
 	}

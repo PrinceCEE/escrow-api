@@ -7,6 +7,7 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -44,11 +45,24 @@ func (repo *BusinessRepository) Create(b *models.Business, tx pgx.Tx) error {
 
 	args := []any{b.Name, b.Email, b.CreatedAt, b.UpdatedAt}
 
+	var id uuid.UUID
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(&b.ID, &b.Version)
+		err := tx.QueryRow(ctx, query, args...).Scan(&id, &b.Version)
+		if err != nil {
+			return err
+		}
+
+		b.ID = id.String()
+		return nil
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(&b.ID, &b.Version)
+	err := repo.DB.QueryRow(ctx, query, args...).Scan(&id, &b.Version)
+	if err != nil {
+		return err
+	}
+
+	b.ID = id.String()
+	return nil
 }
 
 func (repo *BusinessRepository) Update(b *models.Business, tx pgx.Tx) error {
@@ -95,8 +109,9 @@ func (repo *BusinessRepository) getByKey(key string, value any, tx pgx.Tx) (*mod
 		row = repo.DB.QueryRow(ctx, query, value)
 	}
 
+	var id uuid.UUID
 	err := row.Scan(
-		&b.ID,
+		&id,
 		&b.Name,
 		&b.Email,
 		&b.CreatedAt,
@@ -108,6 +123,7 @@ func (repo *BusinessRepository) getByKey(key string, value any, tx pgx.Tx) (*mod
 		return nil, err
 	}
 
+	b.ID = id.String()
 	return b, nil
 }
 

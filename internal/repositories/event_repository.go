@@ -7,6 +7,7 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -51,11 +52,24 @@ func (repo *EventRepository) Create(e *models.Event, tx pgx.Tx) error {
 		e.UpdatedAt,
 	}
 
+	var id uuid.UUID
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(&e.ID, &e.Version)
+		err := tx.QueryRow(ctx, query, args...).Scan(&id, &e.Version)
+		if err != nil {
+			return err
+		}
+
+		e.ID = id.String()
+		return nil
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(&e.ID, &e.Version)
+	err := repo.DB.QueryRow(ctx, query, args...).Scan(&id, &e.Version)
+	if err != nil {
+		return err
+	}
+
+	e.ID = id.String()
+	return nil
 }
 
 func (repo *EventRepository) Update(e *models.Event, tx pgx.Tx) error {
@@ -104,8 +118,9 @@ func (repo *EventRepository) GetById(id string, tx pgx.Tx) (*models.Event, error
 		row = repo.DB.QueryRow(ctx, query, id)
 	}
 
+	var eId uuid.UUID
 	err := row.Scan(
-		&e.ID,
+		&eId,
 		&e.Data,
 		&e.OriginEnvironment,
 		&e.TargetEnvironment,
@@ -119,6 +134,7 @@ func (repo *EventRepository) GetById(id string, tx pgx.Tx) (*models.Event, error
 		return nil, err
 	}
 
+	e.ID = eId.String()
 	return e, nil
 }
 

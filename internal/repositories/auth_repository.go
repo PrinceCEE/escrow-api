@@ -8,6 +8,7 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -46,11 +47,24 @@ func (repo *AuthRepository) Create(a *models.Auth, tx pgx.Tx) error {
 
 	args := []any{a.UserID, a.Password, a.PasswordHistory, a.CreatedAt, a.UpdatedAt}
 
+	var id uuid.UUID
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(&a.ID, &a.Version)
+		err := tx.QueryRow(ctx, query, args...).Scan(&id, &a.Version)
+		if err != nil {
+			return err
+		}
+
+		a.ID = id.String()
+		return nil
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(&a.ID, &a.Version)
+	err := repo.DB.QueryRow(ctx, query, args...).Scan(&id, &a.Version)
+	if err != nil {
+		return err
+	}
+
+	a.ID = id.String()
+	return nil
 }
 
 func (repo *AuthRepository) Update(a *models.Auth, tx pgx.Tx) error {
@@ -74,6 +88,8 @@ func (repo *AuthRepository) Update(a *models.Auth, tx pgx.Tx) error {
 func (repo *AuthRepository) getByKey(key string, value any, tx pgx.Tx) (*models.Auth, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
+
+	var id, userId uuid.UUID
 
 	a := new(models.Auth)
 	query := fmt.Sprintf(`
@@ -99,8 +115,8 @@ func (repo *AuthRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 	}
 
 	err := row.Scan(
-		&a.ID,
-		&a.UserID,
+		&id,
+		&userId,
 		&a.Password,
 		&a.PasswordHistory,
 		&a.CreatedAt,
@@ -111,6 +127,9 @@ func (repo *AuthRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 	if err != nil {
 		return nil, err
 	}
+
+	a.ID = id.String()
+	a.UserID = userId.String()
 
 	return a, nil
 }

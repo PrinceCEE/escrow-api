@@ -8,6 +8,7 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -46,11 +47,24 @@ func (repo *WalletRepository) Create(w *models.Wallet, tx pgx.Tx) error {
 
 	args := []any{w.Identifier, w.Balance, w.Receivable, w.Payable, w.AccountType, w.CreatedAt, w.UpdatedAt}
 
+	var id uuid.UUID
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(&w.ID, &w.Version)
+		err := tx.QueryRow(ctx, query, args...).Scan(&id, &w.Version)
+		if err != nil {
+			return err
+		}
+
+		w.ID = id.String()
+		return nil
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(&w.ID, &w.Version)
+	err := repo.DB.QueryRow(ctx, query, args...).Scan(&id, &w.Version)
+	if err != nil {
+		return err
+	}
+
+	w.ID = id.String()
+	return nil
 }
 
 func (repo *WalletRepository) Update(w *models.Wallet, tx pgx.Tx) error {
@@ -87,8 +101,7 @@ func (repo *WalletRepository) getByKey(key string, value any, tx pgx.Tx) (*model
 			w.created_at,
 			w.updated_at,
 			w.deleted_at,
-			w.version
-			u.id,
+			w.version,
 			u.email,
 			u.phone_number,
 			u.first_name,
@@ -101,8 +114,7 @@ func (repo *WalletRepository) getByKey(key string, value any, tx pgx.Tx) (*model
 			u.created_at,
 			u.updated_at,
 			u.deleted_at,
-			u.version
-			b.id,
+			u.version,
 			b.name,
 			b.email,
 			b.created_at,
@@ -116,6 +128,10 @@ func (repo *WalletRepository) getByKey(key string, value any, tx pgx.Tx) (*model
 		WHERE %s = $1
 	`, key)
 
+	var id, identifier uuid.UUID
+	var user models.User
+	var business models.Business
+
 	var row pgx.Row
 	if tx != nil {
 		row = tx.QueryRow(ctx, query, value)
@@ -124,8 +140,8 @@ func (repo *WalletRepository) getByKey(key string, value any, tx pgx.Tx) (*model
 	}
 
 	err := row.Scan(
-		&w.ID,
-		&w.Identifier,
+		&id,
+		&identifier,
 		&w.Balance,
 		&w.Receivable,
 		&w.Payable,
@@ -134,30 +150,37 @@ func (repo *WalletRepository) getByKey(key string, value any, tx pgx.Tx) (*model
 		&w.UpdatedAt,
 		&w.DeletedAt,
 		&w.Version,
-		&w.User.ID,
 		&w.User.Email,
-		&w.User.PhoneNumber,
-		&w.User.FirstName,
-		&w.User.LastName,
-		&w.User.IsPhoneNumberVerified,
-		&w.User.IsEmailVerified,
-		&w.User.RegStage,
-		&w.User.AccountType,
-		&w.User.BusinessID,
-		&w.User.CreatedAt,
-		&w.User.UpdatedAt,
-		&w.User.DeletedAt,
-		&w.User.Version,
-		&w.Business.ID,
-		&w.Business.Name,
-		&w.Business.Email,
-		&w.Business.CreatedAt,
-		&w.Business.UpdatedAt,
-		&w.Business.DeletedAt,
-		&w.Business.Version,
+		&user.PhoneNumber,
+		&user.FirstName,
+		&user.LastName,
+		&user.IsPhoneNumberVerified,
+		&user.IsEmailVerified,
+		&user.RegStage,
+		&user.AccountType,
+		&user.BusinessID,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.DeletedAt,
+		&user.Version,
+		&business.Name,
+		&business.Email,
+		&business.CreatedAt,
+		&business.UpdatedAt,
+		&business.DeletedAt,
+		&business.Version,
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	w.ID = id.String()
+	if w.AccountType == models.PersonalAccountType {
+		user.ID = identifier.String()
+		w.User = user
+	} else {
+		business.ID = identifier.String()
+		w.Business = business
 	}
 
 	return w, nil

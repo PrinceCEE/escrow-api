@@ -107,7 +107,7 @@ func (h *userHandler) updateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user.AccountType == models.PersonalAccountType {
-		business, err := businessRepo.GetById(user.BusinessID.String(), tx)
+		business, err := businessRepo.GetById(user.BusinessID, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -131,7 +131,7 @@ func (h *userHandler) updateAccount(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		user.Business = *business
+		user.Business = business
 	}
 
 	resp.Message = "account updated successfully"
@@ -163,7 +163,7 @@ func (h *userHandler) changePassword(w http.ResponseWriter, r *http.Request) {
 	authRepo := h.c.GetAuthRepository()
 
 	password, _ := utils.GeneratePasswordHash(body.Password)
-	auth, err := authRepo.GetByUserId(user.ID.String(), nil)
+	auth, err := authRepo.GetByUserId(user.ID, nil)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)

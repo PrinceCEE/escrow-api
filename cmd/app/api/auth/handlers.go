@@ -212,7 +212,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 		if business != nil {
 			user.BusinessID = business.ID
-			user.Business = *business
+			user.Business = business
 		}
 
 		err := userRepo.Create(user, tx)
@@ -364,13 +364,13 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		accessTokenStr, _ := jwt.GenerateToken(&jwt.TokenClaims{
-			UserID:    user.ID.String(),
+			UserID:    user.ID,
 			Email:     user.Email,
 			TokenType: string(models.AccessToken),
 		})
 
 		refreshTokenStr, _ := jwt.GenerateToken(&jwt.TokenClaims{
-			UserID:    user.ID.String(),
+			UserID:    user.ID,
 			Email:     user.Email,
 			TokenType: string(models.RefreshToken),
 		})
@@ -461,7 +461,7 @@ func (h *authHandler) signIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth, err := authRepo.GetByUserId(user.ID.String(), nil)
+	auth, err := authRepo.GetByUserId(user.ID, nil)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -482,13 +482,13 @@ func (h *authHandler) signIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	accessTokenStr, _ := jwt.GenerateToken(&jwt.TokenClaims{
-		UserID:    user.ID.String(),
+		UserID:    user.ID,
 		Email:     user.Email,
 		TokenType: string(models.AccessToken),
 	})
 
 	refreshTokenStr, _ := jwt.GenerateToken(&jwt.TokenClaims{
-		UserID:    user.ID.String(),
+		UserID:    user.ID,
 		Email:     user.Email,
 		TokenType: string(models.RefreshToken),
 	})
@@ -659,6 +659,7 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 
 	user, err := userRepo.GetByEmail(body.Email, nil)
 	if err != nil {
+		fmt.Println("Line 662", err)
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
 			resp.Message = fmt.Sprintf("user %s", response.ErrNotFound.Error())
@@ -840,7 +841,7 @@ func (h *authHandler) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth, err := authRepo.GetByUserId(user.ID.String(), nil)
+	auth, err := authRepo.GetByUserId(user.ID, nil)
 	if err != nil {
 		resp.Message = err.Error()
 		response.SendErrorResponse(w, resp, http.StatusInternalServerError)

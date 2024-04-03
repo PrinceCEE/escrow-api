@@ -8,6 +8,7 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -48,11 +49,24 @@ func (repo *UserRepository) Create(u *models.User, tx pgx.Tx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
+	var id uuid.UUID
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(&u.ID, &u.Version)
+		err := tx.QueryRow(ctx, query, args...).Scan(&id, &u.Version)
+		if err != nil {
+			return err
+		}
+
+		u.ID = id.String()
+		return nil
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(&u.ID, &u.Version)
+	err := repo.DB.QueryRow(ctx, query, args...).Scan(&id, &u.Version)
+	if err != nil {
+		return err
+	}
+
+	u.ID = id.String()
+	return nil
 }
 
 func (repo *UserRepository) Update(u *models.User, tx pgx.Tx) error {
@@ -78,6 +92,11 @@ func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 	defer cancel()
 
 	u := new(models.User)
+
+	var id, businessId *uuid.UUID
+	var imageUrl *string
+	var business models.Business
+
 	query := fmt.Sprintf(`
 		SELECT
 			u.id,
@@ -90,13 +109,14 @@ func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 			u.reg_stage,
 			u.account_type,
 			u.business_id,
+			u.image_url,
 			u.created_at,
 			u.updated_at,
 			u.deleted_at,
-			u.version
-			b.id,
+			u.version,
 			b.name,
 			b.email,
+			b.image_url,
 			b.created_at,
 			b.updated_at,
 			b.deleted_at,
@@ -106,7 +126,7 @@ func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 		LEFT JOIN businesses b ON b.id = u.business_id
 		WHERE
 			%s = $1
-			AND deleted_at IS NULL`,
+			AND u.deleted_at IS NULL`,
 		key,
 	)
 
@@ -118,7 +138,7 @@ func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 	}
 
 	err := row.Scan(
-		&u.ID,
+		&id,
 		&u.Email,
 		&u.PhoneNumber,
 		&u.FirstName,
@@ -127,21 +147,29 @@ func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 		&u.IsEmailVerified,
 		&u.RegStage,
 		&u.AccountType,
-		&u.BusinessID,
+		&businessId,
+		&imageUrl,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 		&u.DeletedAt,
 		&u.Version,
-		&u.Business.ID,
-		&u.Business.Name,
-		&u.Business.Email,
-		&u.Business.CreatedAt,
-		&u.Business.UpdatedAt,
-		&u.Business.DeletedAt,
-		&u.Business.Version,
+		&business.Name,
+		&business.Email,
+		&business.ImageUrl,
+		&business.CreatedAt,
+		&business.UpdatedAt,
+		&business.DeletedAt,
+		&business.Version,
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	u.ID = id.String()
+	u.ImageUrl = *imageUrl
+	if u.AccountType == models.BusinessAccountType {
+		u.BusinessID = businessId.String()
+		u.Business = &business
 	}
 
 	return u, nil
@@ -152,15 +180,15 @@ func (repo *UserRepository) GetById(id string, tx pgx.Tx) (*models.User, error) 
 }
 
 func (repo *UserRepository) GetByEmail(email string, tx pgx.Tx) (*models.User, error) {
-	return repo.getByKey("email", email, tx)
+	return repo.getByKey("u.email", email, tx)
 }
 
 func (repo *UserRepository) GetByPhoneNumber(phone string, tx pgx.Tx) (*models.User, error) {
-	return repo.getByKey("phone_number", phone, tx)
+	return repo.getByKey("u.phone_number", phone, tx)
 }
 
 func (repo *UserRepository) GetByBusinessId(id string, tx pgx.Tx) (*models.User, error) {
-	return repo.getByKey("business_id", id, tx)
+	return repo.getByKey("u.business_id", id, tx)
 }
 
 func (repo *UserRepository) Delete(id string, tx pgx.Tx) (err error) {

@@ -52,9 +52,9 @@ func (h *walletHandler) addBankAccount(w http.ResponseWriter, r *http.Request) {
 
 	wallet := new(models.Wallet)
 	if user.AccountType == models.PersonalAccountType {
-		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), tx)
+		wallet, _ = walletRepo.GetByIdentifier(user.ID, tx)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), tx)
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, tx)
 	}
 
 	bankAccount := &models.BankAccount{
@@ -109,12 +109,12 @@ func (h *walletHandler) deleteBankAccount(w http.ResponseWriter, r *http.Request
 
 	wallet := new(models.Wallet)
 	if user.AccountType == models.PersonalAccountType {
-		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), nil)
+		wallet, _ = walletRepo.GetByIdentifier(user.ID, nil)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), nil)
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, nil)
 	}
 
-	if bankAccount.WalletID.String() != wallet.ID.String() {
+	if bankAccount.WalletID != wallet.ID {
 		resp.Message = "forbidden"
 		response.SendErrorResponse(w, resp, http.StatusForbidden)
 		return
@@ -163,12 +163,12 @@ func (h *walletHandler) getBankAccounts(w http.ResponseWriter, r *http.Request) 
 
 	wallet := new(models.Wallet)
 	if user.AccountType == models.PersonalAccountType {
-		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), nil)
+		wallet, _ = walletRepo.GetByIdentifier(user.ID, nil)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), nil)
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, nil)
 	}
 
-	if wallet.ID.String() != body.WalletID {
+	if wallet.ID != body.WalletID {
 		resp.Message = "forbidden"
 		response.SendErrorResponse(w, resp, http.StatusForbidden)
 		return
@@ -209,9 +209,9 @@ func (h *walletHandler) getWallet(w http.ResponseWriter, r *http.Request) {
 
 	wallet := new(models.Wallet)
 	if user.AccountType == models.PersonalAccountType {
-		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), nil)
+		wallet, _ = walletRepo.GetByIdentifier(user.ID, nil)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), nil)
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, nil)
 	}
 
 	resp.Message = "wallet fetched successfully"
@@ -251,9 +251,9 @@ func (h *walletHandler) addFunds(w http.ResponseWriter, r *http.Request) {
 
 	wallet := new(models.Wallet)
 	if user.AccountType == models.PersonalAccountType {
-		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), tx)
+		wallet, _ = walletRepo.GetByIdentifier(user.ID, tx)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), tx)
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, tx)
 	}
 
 	if err != nil {
@@ -279,7 +279,7 @@ func (h *walletHandler) addFunds(w http.ResponseWriter, r *http.Request) {
 	paystackResponse, err := paystack.InitiateTransaction(paystack.InitiateTransactionDto{
 		Email:     user.Email,
 		Amount:    strconv.FormatInt(int64(body.Amount), 10),
-		Reference: walletHistory.ID.String(),
+		Reference: walletHistory.ID,
 	})
 	if err != nil {
 		resp.Message = err.Error()
@@ -332,9 +332,9 @@ func (h *walletHandler) withrawFunds(w http.ResponseWriter, r *http.Request) {
 
 	wallet := new(models.Wallet)
 	if user.AccountType == models.PersonalAccountType {
-		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), tx)
+		wallet, _ = walletRepo.GetByIdentifier(user.ID, tx)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), tx)
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, tx)
 	}
 
 	wallet.Balance -= body.Amount
@@ -405,12 +405,12 @@ func (h *walletHandler) getWalletHistories(w http.ResponseWriter, r *http.Reques
 
 	wallet := new(models.Wallet)
 	if user.AccountType == models.PersonalAccountType {
-		wallet, _ = walletRepo.GetByIdentifier(user.ID.String(), nil)
+		wallet, _ = walletRepo.GetByIdentifier(user.ID, nil)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID.String(), nil)
+		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, nil)
 	}
 
-	if body.WalletID != wallet.ID.String() {
+	if body.WalletID != wallet.ID {
 		resp.Message = "forbidden"
 		response.SendErrorResponse(w, resp, http.StatusForbidden)
 		return
@@ -520,7 +520,7 @@ func (h *walletHandler) handlePaystackWebhook(w http.ResponseWriter, r *http.Req
 			return
 		}
 
-		wallet, err := walletRepo.GetById(walletHistory.WalletID.String(), tx)
+		wallet, err := walletRepo.GetById(walletHistory.WalletID, tx)
 		if err != nil {
 			h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)

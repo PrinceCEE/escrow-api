@@ -7,6 +7,7 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -51,11 +52,24 @@ func (repo *TokenRepository) Create(t *models.Token, tx pgx.Tx) error {
 		t.UpdatedAt,
 	}
 
+	var id uuid.UUID
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(&t.ID, &t.Version)
+		err := tx.QueryRow(ctx, query, args...).Scan(&id, &t.Version)
+		if err != nil {
+			return err
+		}
+
+		t.ID = id.String()
+		return nil
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(&t.ID, &t.Version)
+	err := repo.DB.QueryRow(ctx, query, args...).Scan(&id, &t.Version)
+	if err != nil {
+		return err
+	}
+
+	t.ID = id.String()
+	return nil
 }
 
 func (repo *TokenRepository) Update(t *models.Token, tx pgx.Tx) error {
@@ -80,6 +94,7 @@ func (repo *TokenRepository) getByKey(key string, value any, tx pgx.Tx) (*models
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
+	var id, userId uuid.UUID
 	t := new(models.Token)
 	query := `
 		SELECT
@@ -105,9 +120,9 @@ func (repo *TokenRepository) getByKey(key string, value any, tx pgx.Tx) (*models
 	}
 
 	err := row.Scan(
-		&t.ID,
+		&id,
 		&t.Hash,
-		&t.UserID,
+		&userId,
 		&t.TokenType,
 		&t.InUse,
 		&t.CreatedAt,
@@ -119,6 +134,8 @@ func (repo *TokenRepository) getByKey(key string, value any, tx pgx.Tx) (*models
 		return nil, err
 	}
 
+	t.ID = id.String()
+	t.UserID = userId.String()
 	return t, nil
 }
 

@@ -5,13 +5,13 @@ CREATE TYPE EVENT_TYPE_ENUM AS ENUM ('sms', 'email');
 CREATE TYPE TOKEN_TYPE_ENUM AS ENUM ('access_token', 'refresh_token');
 CREATE TYPE OTP_TYPE AS ENUM ('sms', 'email', 'reset_password');
 CREATE TYPE MODEL_STATUS_ENUM AS ENUM (
-  "Successful",
-  "Canceled",
-  "Pending"
+  'Successful',
+  'Canceled',
+  'Pending'
 );
 CREATE TYPE WITHDRAWAL_TYPE_ENUM AS ENUM (
-  "Withdrawal",
-  "Deposit"
+  'Withdrawal',
+  'Deposit'
 );
 
 CREATE TABLE IF NOT EXISTS businesses (

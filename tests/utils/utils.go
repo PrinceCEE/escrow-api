@@ -19,13 +19,13 @@ const setupTypesSql = `
 	CREATE TYPE TOKEN_TYPE_ENUM AS ENUM ('access_token', 'refresh_token');
 	CREATE TYPE OTP_TYPE AS ENUM ('sms', 'email', 'reset_password');
 	CREATE TYPE MODEL_STATUS_ENUM AS ENUM (
-		"Successful",
-		"Canceled",
-		"Pending"
+		'Successful',
+		'Canceled',
+		'Pending'
 	);
 	CREATE TYPE WITHDRAWAL_TYPE_ENUM AS ENUM (
-		"Withdrawal",
-		"Deposit"
+		'Withdrawal',
+		'Deposit'
 	);
 
 	CREATE TABLE IF NOT EXISTS businesses (
@@ -123,7 +123,7 @@ const setupTypesSql = `
 		wallet_id UUID REFERENCES wallets NOT NULL,
 		type WITHDRAWAL_TYPE_ENUM NOT NULL,
 		amount INT NOT NULL,
-		status MODEL_STATUS_ENUM NOT NULL DEFAULT "Pending",
+		status MODEL_STATUS_ENUM NOT NULL DEFAULT 'Pending',
 		created_at TIMESTAMPTZ NOT NULL,
 		updated_at TIMESTAMPTZ NOT NULL,
 		deleted_at TIMESTAMPTZ,
@@ -151,9 +151,9 @@ var tearDownTypesSql = `
 	DROP TABLE IF EXISTS events;
 	DROP TABLE IF EXISTS auths;
 	DROP TABLE IF EXISTS otps;
-	DROP TABLE IF EXISTS wallets;
 	DROP TABLE IF EXISTS wallet_histories;
 	DROP TABLE IF EXISTS bank_accounts;
+	DROP TABLE IF EXISTS wallets;
 	DROP TABLE IF EXISTS users;
 	DROP TABLE IF EXISTS businesses;
 
@@ -207,19 +207,23 @@ type TestModelMixin struct {
 
 type TestUser struct {
 	TestModelMixin
-	Email                 string `json:"email,omitempty"`
-	PhoneNumber           string `json:"phone_number,omitempty"`
-	FirstName             string `json:"first_name,omitempty"`
-	LastName              string `json:"last_name,omitempty"`
-	IsPhoneNumberVerified bool   `json:"is_phone_number_verified,omitempty"`
-	IsEmailVerified       bool   `json:"is_email_verified,omitempty"`
-	RegStage              int    `json:"reg_stage,omitempty"`
-	AccountType           string `json:"account_type,omitempty"`
+	Email                 string        `json:"email,omitempty"`
+	PhoneNumber           string        `json:"phone_number,omitempty"`
+	FirstName             string        `json:"first_name,omitempty"`
+	LastName              string        `json:"last_name,omitempty"`
+	IsPhoneNumberVerified bool          `json:"is_phone_number_verified,omitempty"`
+	IsEmailVerified       bool          `json:"is_email_verified,omitempty"`
+	RegStage              int           `json:"reg_stage,omitempty"`
+	AccountType           string        `json:"account_type,omitempty"`
+	ImageUrl              string        `json:"image_url,omitempty"`
+	BusinessID            string        `json:"business_id,omitempty"`
+	Business              TestBussiness `json:"business,omitempty"`
 }
 
 type TestBussiness struct {
-	UserID string `json:"user_id,omitempty"`
-	Name   string `json:"name,omitempty"`
-	Email  string `json:"email,omitempty"`
+	UserID   string `json:"user_id,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Email    string `json:"email,omitempty"`
+	ImageUrl string `json:"image_url,omitempty"`
 	TestModelMixin
 }
