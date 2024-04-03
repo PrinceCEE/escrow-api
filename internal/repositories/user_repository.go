@@ -38,13 +38,26 @@ func (repo *UserRepository) Create(u *models.User, tx pgx.Tx) error {
 	u.CreatedAt = now
 	u.UpdatedAt = now
 
-	query := `
+	var query string
+	var args []any
+
+	if u.AccountType == models.PersonalAccountType {
+		query = `
 		INSERT INTO users (email, account_type, reg_stage, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, version
 	`
 
-	args := []any{u.Email, u.AccountType, u.RegStage, u.CreatedAt, u.UpdatedAt}
+		args = []any{u.Email, u.AccountType, u.RegStage, u.CreatedAt, u.UpdatedAt}
+	} else {
+		query = `
+		INSERT INTO users (email, account_type, reg_stage, business_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, version
+	`
+
+		args = []any{u.Email, u.AccountType, u.RegStage, u.BusinessID, u.CreatedAt, u.UpdatedAt}
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
@@ -114,13 +127,13 @@ func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 			u.updated_at,
 			u.deleted_at,
 			u.version,
-			b.name,
-			b.email,
-			b.image_url,
-			b.created_at,
-			b.updated_at,
-			b.deleted_at,
-			b.version
+			COALESCE(b.name, '') AS b_name,
+			COALESCE(b.email, '') AS b_email,
+			COALESCE(b.image_url, '') AS b_image_url,
+			COALESCE(b.created_at, '1970-01-01 00:00:00') AS b_created_at,
+			COALESCE(b.updated_at, '1970-01-01 00:00:00') AS b_updated_at,
+			COALESCE(b.deleted_at, '1970-01-01 00:00:00') AS b_deleted_at,
+			COALESCE(b.version, 1) AS b_version
 		FROM
 			users u
 		LEFT JOIN businesses b ON b.id = u.business_id
@@ -166,7 +179,12 @@ func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 	}
 
 	u.ID = id.String()
-	u.ImageUrl = *imageUrl
+
+	if imageUrl != nil {
+		u.ImageUrl = *imageUrl
+		business.ImageUrl = *imageUrl
+	}
+
 	if u.AccountType == models.BusinessAccountType {
 		u.BusinessID = businessId.String()
 		u.Business = &business

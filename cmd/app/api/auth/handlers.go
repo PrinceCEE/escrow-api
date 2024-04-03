@@ -210,6 +210,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 			AccountType: *body.AccountType,
 			RegStage:    int(*body.RegStage),
 		}
+
 		if business != nil {
 			user.BusinessID = business.ID
 			user.Business = business
@@ -659,7 +660,6 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 
 	user, err := userRepo.GetByEmail(body.Email, nil)
 	if err != nil {
-		fmt.Println("Line 662", err)
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
 			resp.Message = fmt.Sprintf("user %s", response.ErrNotFound.Error())
@@ -672,13 +672,8 @@ func (h *authHandler) verifyCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	tx, err := h.c.GetDB().Begin(ctx)
+	tx, _ := h.c.GetDB().Begin(ctx)
 	defer tx.Rollback(ctx)
-	if err != nil {
-		resp.Message = err.Error()
-		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
-		return
-	}
 
 	otp, err := otpRepo.GetOneByWhere(`
 		WHERE
