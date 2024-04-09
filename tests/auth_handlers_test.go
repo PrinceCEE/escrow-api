@@ -27,18 +27,6 @@ type DataResponse struct {
 	User test_utils.TestUser `json:"user,omitempty"`
 }
 
-type MetaResponse struct {
-	AccessToken  string `json:"access_token,omitempty"`
-	RefreshToken string `json:"refresh_token,omitempty"`
-}
-
-type Response struct {
-	Success bool         `json:"success"`
-	Message string       `json:"message"`
-	Data    DataResponse `json:"data,omitempty"`
-	Meta    MetaResponse `json:"meta,omitempty"`
-}
-
 func (s *AuthHandlerTestSuite) SetupSuite() {
 	s.ts = test_utils.NewTestServer()
 	s.password = "password"
@@ -79,7 +67,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.NotEmpty(respBody.Data.User)
@@ -102,7 +90,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("email verified successfully", respBody.Message)
@@ -121,7 +109,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal(2, respBody.Data.User.RegStage)
@@ -143,7 +131,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("phone number verified successfully", respBody.Message)
@@ -164,7 +152,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.NotEmpty(respBody.Meta.AccessToken)
@@ -187,7 +175,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 			s.Equal(http.StatusBadRequest, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal(false, respBody.Success)
@@ -207,7 +195,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.NotEmpty(respBody.Data.User)
@@ -232,7 +220,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 
 			defer res.Body.Close()
 
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.NotEmpty(respBody.Meta.AccessToken)
@@ -251,7 +239,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 
 			defer res.Body.Close()
 
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("invalid sign in credentials", respBody.Message)
@@ -270,7 +258,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 
 			defer res.Body.Close()
 
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("email not verified", respBody.Message)
@@ -294,7 +282,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 
 			defer res.Body.Close()
 
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("otp send to your email", respBody.Message)
@@ -316,7 +304,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("otp verified successfully", respBody.Message)
@@ -334,7 +322,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 
 			defer res.Body.Close()
 
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("you can't use your old password", respBody.Message)
@@ -352,7 +340,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 
 			defer res.Body.Close()
 
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("password changed successfully", respBody.Message)
@@ -370,7 +358,7 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 
 			defer res.Body.Close()
 
-			respBody := new(Response)
+			respBody := new(test_utils.Response[DataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.NotEmpty(respBody.Meta.AccessToken)

@@ -197,6 +197,22 @@ func (ts *TestServer) DropTablesAndTypes() {
 	}
 }
 
+type MetaResponse struct {
+	Page         int    `json:"page,omitempty"`
+	PageSize     int    `json:"page_size,omitempty"`
+	Total        int    `json:"total,omitempty"`
+	TotalPages   int    `json:"total_pages,omitempty"`
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+}
+
+type Response[T any] struct {
+	Success bool         `json:"success"`
+	Message string       `json:"message"`
+	Data    T            `json:"data,omitempty"`
+	Meta    MetaResponse `json:"meta,omitempty"`
+}
+
 type TestModelMixin struct {
 	ID        string    `json:"id,omitempty"`
 	CreatedAt time.Time `json:"created_at,omitempty"`
