@@ -13,6 +13,7 @@ import (
 	"github.com/Bupher-Co/bupher-api/pkg/json"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
 	"github.com/Bupher-Co/bupher-api/pkg/validator"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -26,14 +27,14 @@ func (h *userHandler) getMe(w http.ResponseWriter, r *http.Request) {
 	resp := response.ApiResponse{Message: "user fetched successfully", Data: map[string]any{
 		"user": user,
 	}}
+
 	response.SendResponse(w, resp)
 }
 
 func (h *userHandler) getUser(w http.ResponseWriter, r *http.Request) {
 	resp := response.ApiResponse{}
 
-	userId := r.URL.Query().Get("user_id")
-
+	userId := chi.URLParam(r, "user_id")
 	userRepo := h.c.GetUserRepository()
 
 	user, err := userRepo.GetById(userId, nil)
@@ -78,6 +79,8 @@ func (h *userHandler) updateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tx, _ := h.c.GetDB().Begin(context.Background())
+	defer tx.Rollback(context.Background())
+
 	user := r.Context().Value(utils.ContextKey{}).(*models.User)
 
 	userRepo := h.c.GetUserRepository()
@@ -106,7 +109,7 @@ func (h *userHandler) updateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.AccountType == models.PersonalAccountType {
+	if user.AccountType == models.BusinessAccountType {
 		business, err := businessRepo.GetById(user.BusinessID, tx)
 		if err != nil {
 			resp.Message = err.Error()
@@ -134,6 +137,14 @@ func (h *userHandler) updateAccount(w http.ResponseWriter, r *http.Request) {
 		user.Business = business
 	}
 
+	err = tx.Commit(context.Background())
+	if err != nil {
+		resp.Message = err.Error()
+		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+		return
+	}
+
+	resp.Data = map[string]any{"user": user}
 	resp.Message = "account updated successfully"
 	response.SendResponse(w, resp)
 }

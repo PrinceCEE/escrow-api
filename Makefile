@@ -26,3 +26,9 @@ tests:
 	@clear
 	@echo "running e2e tests"
 	go test -v ./tests
+
+.PHONY: test_domain
+test_domain:
+	@clear
+	@echo "running e2e tests for ${domain}"
+	go test -v ./tests/${domain}

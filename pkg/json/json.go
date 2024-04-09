@@ -29,6 +29,10 @@ func MarshalIndent(v any) (string, error) {
 	return string(js), nil
 }
 
+func Marshal(v any) ([]byte, error) {
+	return json.Marshal(v)
+}
+
 func ReadTypedJSON[T any](b io.ReadCloser) (*T, error) {
 	out := new(T)
 	dec := json.NewDecoder(b)

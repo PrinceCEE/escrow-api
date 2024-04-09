@@ -1,14 +1,21 @@
 package test_utils
 
 import (
+	"bytes"
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"time"
 
 	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/routes"
 	"github.com/Bupher-Co/bupher-api/config"
+	"github.com/Bupher-Co/bupher-api/pkg/json"
 	"github.com/Bupher-Co/bupher-api/tests/utils/mocks/test_config"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+const (
+	ContentType = "application/json"
 )
 
 const setupTypesSql = `
@@ -183,15 +190,22 @@ func NewTestServer() *TestServer {
 
 	s := httptest.NewServer(r)
 
+	ts := TestServer{s, c}
+	ts.DropTablesAndTypes()
+
 	if err := createTablesAndTypes(c.DB); err != nil {
 		panic(err)
 	}
 
-	return &TestServer{s, c}
+	return &ts
 }
 
 func (ts *TestServer) DropTablesAndTypes() {
-	_, err := ts.Config.GetDB().Exec(context.Background(), tearDownTypesSql)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
+	_, err := ts.Config.GetDB().Exec(ctx, tearDownTypesSql)
+
 	if err != nil {
 		panic(err)
 	}
@@ -204,6 +218,15 @@ type MetaResponse struct {
 	TotalPages   int    `json:"total_pages,omitempty"`
 	AccessToken  string `json:"access_token,omitempty"`
 	RefreshToken string `json:"refresh_token,omitempty"`
+}
+
+type SignupDataResponse struct {
+	Code string   `json:"code"`
+	User TestUser `json:"user,omitempty"`
+}
+
+type GetUserResponse struct {
+	User TestUser `json:"user,omitempty"`
 }
 
 type Response[T any] struct {
@@ -242,4 +265,120 @@ type TestBussiness struct {
 	Email    string `json:"email,omitempty"`
 	ImageUrl string `json:"image_url,omitempty"`
 	TestModelMixin
+}
+
+func SignupPersonalUser(ts *TestServer) (TestUser, string) {
+	url := ts.Server.URL + "/api/v1/auth"
+	post := ts.Server.Client().Post
+	contentType := "application/json"
+	email := "testuser2@user.com"
+
+	// phase 1 sign up
+	phase1SignupDto := map[string]any{
+		"email":        email,
+		"reg_stage":    1,
+		"account_type": "personal",
+	}
+
+	data, _ := json.Marshal(phase1SignupDto)
+	res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(data))
+	if err != nil {
+		panic(err)
+	}
+
+	respBody := new(Response[SignupDataResponse])
+	_ = json.ReadJSON(res.Body, respBody)
+	res.Body.Close()
+
+	if !respBody.Success {
+		panic(respBody.Message)
+	}
+
+	// email verification
+	verifyCodeDto := map[string]any{
+		"email":    email,
+		"code":     respBody.Data.Code,
+		"otp_type": "email",
+	}
+
+	data, _ = json.Marshal(verifyCodeDto)
+	res, err = post(url+"/verify-code", contentType, bytes.NewBuffer(data))
+	if err != nil {
+		panic(err)
+	}
+
+	respBody = new(Response[SignupDataResponse])
+	_ = json.ReadJSON(res.Body, respBody)
+	res.Body.Close()
+
+	if !respBody.Success {
+		panic(respBody.Message)
+	}
+
+	// phase 2 sign up
+	phase2Signup := map[string]any{
+		"email":        email,
+		"phone_number": "09012345678",
+		"reg_stage":    2,
+	}
+
+	data, _ = json.Marshal(phase2Signup)
+	res, err = http.Post(url+"/sign-up", contentType, bytes.NewBuffer(data))
+	if err != nil {
+		panic(err)
+	}
+
+	respBody = new(Response[SignupDataResponse])
+	_ = json.ReadJSON(res.Body, respBody)
+	res.Body.Close()
+
+	if !respBody.Success {
+		panic(respBody.Message)
+	}
+
+	// phone number verification
+	verifyCodeDto = map[string]any{
+		"email":    email,
+		"code":     respBody.Data.Code,
+		"otp_type": "sms",
+	}
+
+	data, _ = json.Marshal(verifyCodeDto)
+	res, err = post(url+"/verify-code", contentType, bytes.NewBuffer(data))
+	if err != nil {
+		panic(err)
+	}
+
+	respBody = new(Response[SignupDataResponse])
+	_ = json.ReadJSON(res.Body, respBody)
+	res.Body.Close()
+
+	if !respBody.Success {
+		panic(respBody.Message)
+	}
+
+	// phase 3 sign up
+	phase3Signup := map[string]any{
+		"email":      email,
+		"first_name": "Test",
+		"last_name":  "User",
+		"password":   "password",
+		"reg_stage":  3,
+	}
+
+	data, _ = json.Marshal(phase3Signup)
+	res, err = http.Post(url+"/sign-up", contentType, bytes.NewBuffer(data))
+	if err != nil {
+		panic(err)
+	}
+
+	respBody = new(Response[SignupDataResponse])
+	_ = json.ReadJSON(res.Body, respBody)
+	res.Body.Close()
+
+	if !respBody.Success {
+		panic(respBody.Message)
+	}
+
+	return respBody.Data.User, respBody.Meta.AccessToken
 }

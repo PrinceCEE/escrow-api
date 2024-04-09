@@ -10,21 +10,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const (
-	contentType = "application/json"
-)
-
 type AuthHandlerTestSuite struct {
 	suite.Suite
 	ts           *test_utils.TestServer
 	testUser     test_utils.TestUser
 	testBusiness test_utils.TestBussiness
 	password     string
-}
-
-type DataResponse struct {
-	Code string              `json:"code"`
-	User test_utils.TestUser `json:"user,omitempty"`
 }
 
 func (s *AuthHandlerTestSuite) SetupSuite() {
@@ -61,13 +52,13 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"reg_stage":    s.testUser.RegStage,
 			})
 
-			res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/sign-up", test_utils.ContentType, bytes.NewBuffer(payload))
 
 			s.NoError(err)
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.NotEmpty(respBody.Data.User)
@@ -84,13 +75,13 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"otp_type": "email",
 			})
 
-			res, err := post(url+"/verify-code", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/verify-code", test_utils.ContentType, bytes.NewBuffer(payload))
 
 			s.NoError(err)
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("email verified successfully", respBody.Message)
@@ -103,13 +94,13 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"phone_number": s.testUser.PhoneNumber,
 			})
 
-			res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/sign-up", test_utils.ContentType, bytes.NewBuffer(payload))
 
 			s.NoError(err)
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal(2, respBody.Data.User.RegStage)
@@ -125,13 +116,13 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"otp_type": "sms",
 			})
 
-			res, err := post(url+"/verify-code", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/verify-code", test_utils.ContentType, bytes.NewBuffer(payload))
 
 			s.NoError(err)
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("phone number verified successfully", respBody.Message)
@@ -146,13 +137,13 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"reg_stage":  3,
 			})
 
-			res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/sign-up", test_utils.ContentType, bytes.NewBuffer(payload))
 
 			s.NoError(err)
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.NotEmpty(respBody.Meta.AccessToken)
@@ -169,13 +160,13 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"reg_stage":    s.testUser.RegStage,
 			})
 
-			res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/sign-up", test_utils.ContentType, bytes.NewBuffer(payload))
 
 			s.NoError(err)
 			s.Equal(http.StatusBadRequest, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal(false, respBody.Success)
@@ -190,12 +181,12 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"business_name": s.testBusiness.Name,
 			})
 
-			res, err := post(url+"/sign-up", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/sign-up", test_utils.ContentType, bytes.NewBuffer(payload))
 			s.NoError(err)
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.NotEmpty(respBody.Data.User)
@@ -214,13 +205,13 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"password": s.password,
 			})
 
-			res, err := post(url+"/sign-in", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/sign-in", test_utils.ContentType, bytes.NewBuffer(payload))
 			s.NoError(err)
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
 
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.NotEmpty(respBody.Meta.AccessToken)
@@ -233,13 +224,13 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"password": "Pa55word",
 			})
 
-			res, err := post(url+"/sign-in", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/sign-in", test_utils.ContentType, bytes.NewBuffer(payload))
 			s.NoError(err)
 			s.Equal(http.StatusBadRequest, res.StatusCode)
 
 			defer res.Body.Close()
 
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("invalid sign in credentials", respBody.Message)
@@ -252,13 +243,13 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"password": s.password,
 			})
 
-			res, err := post(url+"/sign-in", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/sign-in", test_utils.ContentType, bytes.NewBuffer(payload))
 			s.NoError(err)
 			s.Equal(http.StatusForbidden, res.StatusCode)
 
 			defer res.Body.Close()
 
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("email not verified", respBody.Message)
@@ -275,14 +266,14 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"email": s.testUser.Email,
 			})
 
-			res, err := post(url+"/reset-password", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/reset-password", test_utils.ContentType, bytes.NewBuffer(payload))
 
 			s.NoError(err)
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
 
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("otp send to your email", respBody.Message)
@@ -298,13 +289,13 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"otp_type": "reset_password",
 			})
 
-			res, err := post(url+"/verify-code", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/verify-code", test_utils.ContentType, bytes.NewBuffer(payload))
 
 			s.NoError(err)
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("otp verified successfully", respBody.Message)
@@ -316,13 +307,13 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"password": s.password,
 			})
 
-			res, err := post(url+"/change-password", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/change-password", test_utils.ContentType, bytes.NewBuffer(payload))
 			s.NoError(err)
 			s.Equal(http.StatusBadRequest, res.StatusCode)
 
 			defer res.Body.Close()
 
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("you can't use your old password", respBody.Message)
@@ -334,13 +325,13 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"password": "password!",
 			})
 
-			res, err := post(url+"/change-password", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/change-password", test_utils.ContentType, bytes.NewBuffer(payload))
 			s.NoError(err)
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
 
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.Equal("password changed successfully", respBody.Message)
@@ -352,13 +343,13 @@ func (s *AuthHandlerTestSuite) TestAuthHandler() {
 				"password": "password!",
 			})
 
-			res, err := post(url+"/sign-in", contentType, bytes.NewBuffer(payload))
+			res, err := post(url+"/sign-in", test_utils.ContentType, bytes.NewBuffer(payload))
 			s.NoError(err)
 			s.Equal(http.StatusOK, res.StatusCode)
 
 			defer res.Body.Close()
 
-			respBody := new(test_utils.Response[DataResponse])
+			respBody := new(test_utils.Response[test_utils.SignupDataResponse])
 			_ = json.ReadJSON(res.Body, respBody)
 
 			s.NotEmpty(respBody.Meta.AccessToken)

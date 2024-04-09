@@ -194,7 +194,7 @@ func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 }
 
 func (repo *UserRepository) GetById(id string, tx pgx.Tx) (*models.User, error) {
-	return repo.getByKey("id", id, tx)
+	return repo.getByKey("u.id", id, tx)
 }
 
 func (repo *UserRepository) GetByEmail(email string, tx pgx.Tx) (*models.User, error) {
