@@ -102,7 +102,7 @@ func (repo *BankAccountRepository) getByKey(key string, value any, tx pgx.Tx) (*
 			b.created_at,
 			b.updated_at,
 			b.deleted_at,
-			b.version
+			b.version,
 			w.balance,
 			w.receivable_balance,
 			w.payable_balance,
@@ -111,7 +111,7 @@ func (repo *BankAccountRepository) getByKey(key string, value any, tx pgx.Tx) (*
 			w.created_at,
 			w.updated_at,
 			w.deleted_at,
-			w.version,
+			w.version
 		FROM
 			bank_accounts b
 		INNER JOIN wallets w ON w.id = b.wallet_id
@@ -170,9 +170,9 @@ func (repo *BankAccountRepository) Delete(id string, tx pgx.Tx) (err error) {
 	query := `DELETE FROM bank_accounts WHERE id = $1`
 
 	if tx != nil {
-		_, err = tx.Exec(ctx, query)
+		_, err = tx.Exec(ctx, query, id)
 	} else {
-		_, err = repo.DB.Exec(ctx, query)
+		_, err = repo.DB.Exec(ctx, query, id)
 	}
 
 	return
@@ -206,7 +206,7 @@ func (repo *BankAccountRepository) GetByWalletId(id string, pagination utils.Pag
 			b.created_at,
 			b.updated_at,
 			b.deleted_at,
-			b.version
+			b.version,
 			w.balance,
 			w.receivable_balance,
 			w.payable_balance,
@@ -215,7 +215,8 @@ func (repo *BankAccountRepository) GetByWalletId(id string, pagination utils.Pag
 			w.created_at,
 			w.updated_at,
 			w.deleted_at,
-			w.version,
+			w.version
+
 		FROM
 			bank_accounts b
 		INNER JOIN wallets w ON w.id = b.wallet_id
@@ -234,7 +235,7 @@ func (repo *BankAccountRepository) GetByWalletId(id string, pagination utils.Pag
 
 		rows = _rows
 	} else {
-		_rows, err := repo.DB.Query(ctx, query, id)
+		_rows, err := repo.DB.Query(ctx, query, args...)
 		if err != nil {
 			return nil, err
 		}

@@ -14,7 +14,7 @@ type AuthHandlerTestSuite struct {
 	suite.Suite
 	ts           *test_utils.TestServer
 	testUser     test_utils.TestUser
-	testBusiness test_utils.TestBussiness
+	testBusiness test_utils.TestBusiness
 	password     string
 }
 
@@ -29,7 +29,7 @@ func (s *AuthHandlerTestSuite) SetupSuite() {
 		LastName:    "Edeh",
 		RegStage:    1,
 	}
-	s.testBusiness = test_utils.TestBussiness{Name: "Edeh Ventures", Email: "test1@business.com"}
+	s.testBusiness = test_utils.TestBusiness{Name: "Edeh Ventures", Email: "test1@business.com"}
 }
 
 func (s *AuthHandlerTestSuite) TearDownSuite() {

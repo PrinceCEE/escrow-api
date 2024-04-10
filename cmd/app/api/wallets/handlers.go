@@ -3,6 +3,7 @@ package wallets
 import (
 	"context"
 	"errors"
+	"math"
 	"net/http"
 	"strconv"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/Bupher-Co/bupher-api/pkg/json"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
 	"github.com/Bupher-Co/bupher-api/pkg/validator"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 )
@@ -52,9 +54,19 @@ func (h *walletHandler) addBankAccount(w http.ResponseWriter, r *http.Request) {
 
 	wallet := new(models.Wallet)
 	if user.AccountType == models.PersonalAccountType {
-		wallet, _ = walletRepo.GetByIdentifier(user.ID, tx)
+		wallet, err = walletRepo.GetByIdentifier(user.ID, tx)
+		if err != nil {
+			resp.Message = err.Error()
+			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+			return
+		}
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, tx)
+		wallet, err = walletRepo.GetByIdentifier(user.BusinessID, tx)
+		if err != nil {
+			resp.Message = err.Error()
+			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	bankAccount := &models.BankAccount{
@@ -92,7 +104,7 @@ func (h *walletHandler) deleteBankAccount(w http.ResponseWriter, r *http.Request
 	walletRepo := h.c.GetWalletRepository()
 
 	user := r.Context().Value(utils.ContextKey{}).(*models.User)
-	bankAccountId := r.URL.Query().Get("bank_account_id")
+	bankAccountId := chi.URLParam(r, "bank_account_id")
 
 	bankAccount, err := bankAccountRepo.GetById(bankAccountId, nil)
 	if err != nil {
@@ -194,10 +206,23 @@ func (h *walletHandler) getBankAccounts(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	var total int
+	_ = h.c.GetDB().QueryRow(context.Background(), `
+		SELECT COUNT(*) AS total FROM bank_accounts b
+		INNER JOIN wallets w ON w.id = b.wallet_id
+		WHERE b.wallet_id = $1
+	`, body.WalletID).Scan(&total)
+
+	resp.Meta.Page = body.Page
+	resp.Meta.PageSize = body.PageSize
+	resp.Meta.Total = total
+	resp.Meta.TotalPages = int(math.Ceil((float64(total) / float64(body.PageSize))))
+
 	resp.Message = "bank accounts fetched successfully"
 	resp.Data = map[string][]*models.BankAccount{
 		"bank_accounts": bankAccounts,
 	}
+
 	response.SendResponse(w, resp)
 }
 
@@ -435,24 +460,18 @@ func (h *walletHandler) getWalletHistories(w http.ResponseWriter, r *http.Reques
 	}
 
 	var total int
-	err = h.c.GetDB().QueryRow(context.Background(), `
+	_ = h.c.GetDB().QueryRow(context.Background(), `
 		SELECT COUNT(*) AS total FROM wallet_histories h
 		INNER JOIN wallets w ON w.id = h.wallet_id
 		WHERE h.wallet_id = $1
 	`, body.WalletID).Scan(&total)
-
-	if err != nil {
-		resp.Message = err.Error()
-		response.SendErrorResponse(w, resp, http.StatusInternalServerError)
-		return
-	}
 
 	resp.Message = "wallet histories fetched successfully"
 	resp.Data = map[string]any{
 		"wallet_histories": walletHistories,
 	}
 	resp.Meta.Page = body.Page
-	resp.Meta.Page = body.PageSize
+	resp.Meta.PageSize = body.PageSize
 	resp.Meta.Total = total
 	resp.Meta.TotalPages = int(total / body.PageSize)
 

@@ -102,29 +102,29 @@ func (repo *WalletRepository) getByKey(key string, value any, tx pgx.Tx) (*model
 			w.updated_at,
 			w.deleted_at,
 			w.version,
-			u.email,
-			u.phone_number,
-			u.first_name,
-			u.last_name,
-			u.is_phone_number_verified,
-			u.is_email_verified,
-			u.reg_stage,
-			u.account_type,
-			u.business_id,
-			u.created_at,
-			u.updated_at,
-			u.deleted_at,
-			u.version,
-			b.name,
-			b.email,
-			b.created_at,
-			b.updated_at,
-			b.deleted_at,
-			b.version
-		FROM
-			wallets w
-		INNER JOIN users u ON u.id = w.identifier
-		INNER JOIN businesses b ON b.id = w.identifier
+			COALESCE(u.email, ''),
+			COALESCE(u.phone_number, ''),
+			COALESCE(u.first_name, ''),
+			COALESCE(u.last_name, ''),
+			COALESCE(u.is_phone_number_verified, false),
+			COALESCE(u.is_email_verified, false),
+			COALESCE(u.reg_stage, 1),
+			COALESCE(u.account_type, 'personal'),
+			COALESCE(u.business_id, uuid_generate_v4()),
+			COALESCE(u.created_at, now()),
+			COALESCE(u.updated_at, now()),
+			COALESCE(u.deleted_at, now()),
+			COALESCE(u.version, 1),
+			COALESCE(b.name, ''),
+			COALESCE(b.email, ''),
+			COALESCE(b.created_at, now()),
+			COALESCE(b.updated_at, now()),
+			COALESCE(b.deleted_at, now()),
+			COALESCE(b.version, 1)
+
+		FROM wallets w
+		LEFT JOIN users u ON u.id = w.identifier AND w.account_type = 'personal'
+		LEFT JOIN businesses b ON b.id = w.identifier AND w.account_type = 'business'
 		WHERE %s = $1
 	`, key)
 
@@ -150,7 +150,7 @@ func (repo *WalletRepository) getByKey(key string, value any, tx pgx.Tx) (*model
 		&w.UpdatedAt,
 		&w.DeletedAt,
 		&w.Version,
-		&w.User.Email,
+		&user.Email,
 		&user.PhoneNumber,
 		&user.FirstName,
 		&user.LastName,
