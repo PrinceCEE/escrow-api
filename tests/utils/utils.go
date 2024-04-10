@@ -222,13 +222,13 @@ type TestBankAccount struct {
 }
 
 type TestWallet struct {
-	Balance     int          `json:"balance"`
-	Receivable  int          `json:"receivable_balance"`
-	Payable     int          `json:"payable_balance"`
-	AccountType string       `json:"account_type"`
-	Identifier  string       `json:"identifier"`
-	User        TestUser     `json:"user,omitempty"`
-	Business    TestBusiness `json:"business,omitempty"`
+	Balance     int           `json:"balance"`
+	Receivable  int           `json:"receivable_balance"`
+	Payable     int           `json:"payable_balance"`
+	AccountType string        `json:"account_type"`
+	Identifier  string        `json:"identifier"`
+	User        *TestUser     `json:"user,omitempty"`
+	Business    *TestBusiness `json:"business,omitempty"`
 	TestModelMixin
 }
 
@@ -258,26 +258,26 @@ type Response[T any] struct {
 }
 
 type TestModelMixin struct {
-	ID        string    `json:"id,omitempty"`
-	CreatedAt time.Time `json:"created_at,omitempty"`
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	DeletedAt time.Time `json:"deleted_at,omitempty"`
-	Version   int64     `json:"version,omitempty"`
+	ID        string     `json:"id,omitempty"`
+	CreatedAt time.Time  `json:"created_at,omitempty"`
+	UpdatedAt time.Time  `json:"updated_at,omitempty"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+	Version   int64      `json:"version,omitempty"`
 }
 
 type TestUser struct {
 	TestModelMixin
-	Email                 string       `json:"email,omitempty"`
-	PhoneNumber           string       `json:"phone_number,omitempty"`
-	FirstName             string       `json:"first_name,omitempty"`
-	LastName              string       `json:"last_name,omitempty"`
-	IsPhoneNumberVerified bool         `json:"is_phone_number_verified,omitempty"`
-	IsEmailVerified       bool         `json:"is_email_verified,omitempty"`
-	RegStage              int          `json:"reg_stage,omitempty"`
-	AccountType           string       `json:"account_type,omitempty"`
-	ImageUrl              string       `json:"image_url,omitempty"`
-	BusinessID            string       `json:"business_id,omitempty"`
-	Business              TestBusiness `json:"business,omitempty"`
+	Email                 string        `json:"email,omitempty"`
+	PhoneNumber           string        `json:"phone_number,omitempty"`
+	FirstName             string        `json:"first_name,omitempty"`
+	LastName              string        `json:"last_name,omitempty"`
+	IsPhoneNumberVerified bool          `json:"is_phone_number_verified,omitempty"`
+	IsEmailVerified       bool          `json:"is_email_verified,omitempty"`
+	RegStage              int           `json:"reg_stage,omitempty"`
+	AccountType           string        `json:"account_type,omitempty"`
+	ImageUrl              string        `json:"image_url,omitempty"`
+	BusinessID            *string       `json:"business_id,omitempty"`
+	Business              *TestBusiness `json:"business,omitempty"`
 }
 
 type TestBusiness struct {

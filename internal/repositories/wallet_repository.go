@@ -110,16 +110,16 @@ func (repo *WalletRepository) getByKey(key string, value any, tx pgx.Tx) (*model
 			COALESCE(u.is_email_verified, false),
 			COALESCE(u.reg_stage, 1),
 			COALESCE(u.account_type, 'personal'),
-			COALESCE(u.business_id, uuid_generate_v4()),
+			COALESCE(u.business_id, NULL),
 			COALESCE(u.created_at, now()),
 			COALESCE(u.updated_at, now()),
-			COALESCE(u.deleted_at, now()),
+			COALESCE(u.deleted_at, NULL),
 			COALESCE(u.version, 1),
 			COALESCE(b.name, ''),
 			COALESCE(b.email, ''),
 			COALESCE(b.created_at, now()),
 			COALESCE(b.updated_at, now()),
-			COALESCE(b.deleted_at, now()),
+			COALESCE(b.deleted_at, NULL),
 			COALESCE(b.version, 1)
 
 		FROM wallets w
@@ -129,8 +129,8 @@ func (repo *WalletRepository) getByKey(key string, value any, tx pgx.Tx) (*model
 	`, key)
 
 	var id, identifier uuid.UUID
-	var user models.User
-	var business models.Business
+	user := new(models.User)
+	business := new(models.Business)
 
 	var row pgx.Row
 	if tx != nil {
@@ -177,9 +177,11 @@ func (repo *WalletRepository) getByKey(key string, value any, tx pgx.Tx) (*model
 	w.ID = id.String()
 	if w.AccountType == models.PersonalAccountType {
 		user.ID = identifier.String()
+		w.Identifier = identifier.String()
 		w.User = user
 	} else {
 		business.ID = identifier.String()
+		w.Identifier = identifier.String()
 		w.Business = business
 	}
 

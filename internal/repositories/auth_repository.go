@@ -129,7 +129,7 @@ func (repo *AuthRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 	}
 
 	a.ID = id.String()
-	a.UserID = userId.String()
+	*a.UserID = userId.String()
 
 	return a, nil
 }

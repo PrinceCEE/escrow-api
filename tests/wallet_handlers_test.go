@@ -208,21 +208,36 @@ func (s *WalletHandlerTestSuite) TestWalletHandler() {
 		})
 	})
 
-	// s.Run("manage wallets", func() {
-	// 	s.Run("get wallet", func() {})
+	s.Run("manage wallets", func() {
+		s.Run("get wallet", func() {
+			req := s.get(url)
+			res, err := client.Do(req)
+			s.NoError(err)
 
-	// 	s.Run("add funds", func() {})
+			respBody := new(test_utils.Response[struct {
+				Wallet test_utils.TestWallet `json:"wallet"`
+			}])
+			_ = json.ReadJSON(res.Body, respBody)
+			defer res.Body.Close()
 
-	// 	s.Run("get pending wallet transaction", func() {})
+			s.Equal(true, respBody.Success)
+			s.Equal("wallet fetched successfully", respBody.Message)
+			s.Equal(0, respBody.Data.Wallet.Balance)
+			s.Equal(s.user.ID, respBody.Data.Wallet.Identifier)
+		})
 
-	// 	s.Run("handle webhook", func() {})
+		// s.Run("add funds", func() {})
 
-	// 	s.Run("get successful wallet transaction", func() {})
+		// s.Run("get pending wallet transaction", func() {})
 
-	// 	s.Run("withdraw funds", func() {})
+		// s.Run("handle webhook", func() {})
 
-	// 	s.Run("get wallet histories", func() {})
-	// })
+		// s.Run("get successful wallet transaction", func() {})
+
+		// s.Run("withdraw funds", func() {})
+
+		// s.Run("get wallet histories", func() {})
+	})
 }
 
 func TestWalletHandlerSuite(t *testing.T) {

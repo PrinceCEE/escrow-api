@@ -61,7 +61,7 @@ func (h *walletHandler) addBankAccount(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		wallet, err = walletRepo.GetByIdentifier(user.BusinessID, tx)
+		wallet, err = walletRepo.GetByIdentifier(*user.BusinessID, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)
@@ -75,7 +75,7 @@ func (h *walletHandler) addBankAccount(w http.ResponseWriter, r *http.Request) {
 		AccountNumber: body.AccountNumber,
 		BVN:           body.BVN,
 		WalletID:      wallet.ID,
-		Wallet:        *wallet,
+		Wallet:        wallet,
 	}
 	err = bankAccountRepo.Create(bankAccount, tx)
 	if err != nil {
@@ -123,7 +123,7 @@ func (h *walletHandler) deleteBankAccount(w http.ResponseWriter, r *http.Request
 	if user.AccountType == models.PersonalAccountType {
 		wallet, _ = walletRepo.GetByIdentifier(user.ID, nil)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, nil)
+		wallet, _ = walletRepo.GetByIdentifier(*user.BusinessID, nil)
 	}
 
 	if bankAccount.WalletID != wallet.ID {
@@ -177,7 +177,7 @@ func (h *walletHandler) getBankAccounts(w http.ResponseWriter, r *http.Request) 
 	if user.AccountType == models.PersonalAccountType {
 		wallet, _ = walletRepo.GetByIdentifier(user.ID, nil)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, nil)
+		wallet, _ = walletRepo.GetByIdentifier(*user.BusinessID, nil)
 	}
 
 	if wallet.ID != body.WalletID {
@@ -236,7 +236,7 @@ func (h *walletHandler) getWallet(w http.ResponseWriter, r *http.Request) {
 	if user.AccountType == models.PersonalAccountType {
 		wallet, _ = walletRepo.GetByIdentifier(user.ID, nil)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, nil)
+		wallet, _ = walletRepo.GetByIdentifier(*user.BusinessID, nil)
 	}
 
 	resp.Message = "wallet fetched successfully"
@@ -278,7 +278,7 @@ func (h *walletHandler) addFunds(w http.ResponseWriter, r *http.Request) {
 	if user.AccountType == models.PersonalAccountType {
 		wallet, _ = walletRepo.GetByIdentifier(user.ID, tx)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, tx)
+		wallet, _ = walletRepo.GetByIdentifier(*user.BusinessID, tx)
 	}
 
 	if err != nil {
@@ -359,7 +359,7 @@ func (h *walletHandler) withrawFunds(w http.ResponseWriter, r *http.Request) {
 	if user.AccountType == models.PersonalAccountType {
 		wallet, _ = walletRepo.GetByIdentifier(user.ID, tx)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, tx)
+		wallet, _ = walletRepo.GetByIdentifier(*user.BusinessID, tx)
 	}
 
 	wallet.Balance -= body.Amount
@@ -432,7 +432,7 @@ func (h *walletHandler) getWalletHistories(w http.ResponseWriter, r *http.Reques
 	if user.AccountType == models.PersonalAccountType {
 		wallet, _ = walletRepo.GetByIdentifier(user.ID, nil)
 	} else {
-		wallet, _ = walletRepo.GetByIdentifier(user.BusinessID, nil)
+		wallet, _ = walletRepo.GetByIdentifier(*user.BusinessID, nil)
 	}
 
 	if body.WalletID != wallet.ID {

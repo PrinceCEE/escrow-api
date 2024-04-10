@@ -186,7 +186,7 @@ func (repo *UserRepository) getByKey(key string, value any, tx pgx.Tx) (*models.
 	}
 
 	if u.AccountType == models.BusinessAccountType {
-		u.BusinessID = businessId.String()
+		*u.BusinessID = businessId.String()
 		u.Business = &business
 	}
 

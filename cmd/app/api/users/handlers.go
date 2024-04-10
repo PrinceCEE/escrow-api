@@ -110,7 +110,7 @@ func (h *userHandler) updateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user.AccountType == models.BusinessAccountType {
-		business, err := businessRepo.GetById(user.BusinessID, tx)
+		business, err := businessRepo.GetById(*user.BusinessID, tx)
 		if err != nil {
 			resp.Message = err.Error()
 			response.SendErrorResponse(w, resp, http.StatusInternalServerError)

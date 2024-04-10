@@ -212,7 +212,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if business != nil {
-			user.BusinessID = business.ID
+			user.BusinessID = &business.ID
 			user.Business = business
 		}
 
@@ -339,7 +339,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		auth := &models.Auth{
-			UserID:   user.ID,
+			UserID:   &user.ID,
 			Password: string(hashPwd),
 		}
 
@@ -354,7 +354,7 @@ func (h *authHandler) signUp(w http.ResponseWriter, r *http.Request) {
 		if user.AccountType == models.PersonalAccountType {
 			wallet.Identifier = user.ID
 		} else {
-			wallet.Identifier = user.BusinessID
+			wallet.Identifier = *user.BusinessID
 		}
 
 		err = walletRepo.Create(wallet, tx)

@@ -14,7 +14,7 @@ type User struct {
 	IsEmailVerified       bool       `json:"is_email_verified" db:"is_email_verified"`
 	RegStage              int        `json:"reg_stage" db:"reg_stage"`
 	AccountType           string     `json:"account_type" db:"account_type"`
-	BusinessID            string     `json:"business_id,omitempty" db:"business_id,omitempty"`
+	BusinessID            *string    `json:"business_id,omitempty" db:"business_id,omitempty"`
 	Business              *Business  `json:"business,omitempty" db:"-"`
 	ImageUrl              string     `json:"image_url,omitempty" db:"image_url,omitempty"`
 	ModelMixin
