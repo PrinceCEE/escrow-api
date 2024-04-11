@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Bupher-Co/bupher-api/internal/repositories"
+	"github.com/Bupher-Co/bupher-api/pkg/apis"
 	"github.com/Bupher-Co/bupher-api/pkg/push"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -94,23 +95,31 @@ type IConfig interface {
 	GetOtpRepository() repositories.IOtpRepository
 	GetTokenRepository() repositories.ITokenRepository
 	GetUserRepository() repositories.IUserRepository
+	GetWalletRepository() repositories.IWalletRepository
+	GetWalletHistoryRepository() repositories.IWalletHistoryRepository
+	GetBankAccountRepository() repositories.IBankAccountRepository
 	GetDB() *pgxpool.Pool
 	GetRedisClient() *RedisClient
 	GetLogger() *Logger
 	GetPush() push.IPush
+	GetAPIs() apis.IAPIs
 }
 
 type Config struct {
-	AuthRepository     repositories.IAuthRepository
-	BusinessRepository repositories.IBusinessRepository
-	EventRepository    repositories.IEventRepository
-	OtpRepository      repositories.IOtpRepository
-	TokenRepository    repositories.ITokenRepository
-	UserRepository     repositories.IUserRepository
-	DB                 *pgxpool.Pool
-	RedisClient        *RedisClient
-	Logger             *Logger
-	Push               push.IPush
+	AuthRepository          repositories.IAuthRepository
+	BusinessRepository      repositories.IBusinessRepository
+	EventRepository         repositories.IEventRepository
+	OtpRepository           repositories.IOtpRepository
+	TokenRepository         repositories.ITokenRepository
+	UserRepository          repositories.IUserRepository
+	WalletRepository        repositories.IWalletRepository
+	WalletHistoryRepository repositories.IWalletHistoryRepository
+	BankAccountRepository   repositories.IBankAccountRepository
+	DB                      *pgxpool.Pool
+	RedisClient             *RedisClient
+	Logger                  *Logger
+	Push                    push.IPush
+	Apis                    apis.IAPIs
 }
 
 func NewConfig() *Config {
@@ -144,16 +153,19 @@ func NewConfig() *Config {
 
 	timeout := 10 * time.Second
 	return &Config{
-		DB:                 dbpool,
-		Logger:             logger,
-		RedisClient:        rclient,
-		AuthRepository:     repositories.NewAuthRepository(dbpool, timeout),
-		BusinessRepository: repositories.NewBusinessRepository(dbpool, timeout),
-		EventRepository:    repositories.NewEventRepository(dbpool, timeout),
-		TokenRepository:    repositories.NewTokenRepository(dbpool, timeout),
-		UserRepository:     repositories.NewUserRepository(dbpool, timeout),
-		OtpRepository:      repositories.NewOtpRepository(dbpool, timeout),
-		Push:               &push.Push{},
+		DB:                      dbpool,
+		Logger:                  logger,
+		RedisClient:             rclient,
+		AuthRepository:          repositories.NewAuthRepository(dbpool, timeout),
+		BusinessRepository:      repositories.NewBusinessRepository(dbpool, timeout),
+		EventRepository:         repositories.NewEventRepository(dbpool, timeout),
+		TokenRepository:         repositories.NewTokenRepository(dbpool, timeout),
+		UserRepository:          repositories.NewUserRepository(dbpool, timeout),
+		OtpRepository:           repositories.NewOtpRepository(dbpool, timeout),
+		WalletRepository:        repositories.NewWalletRepository(dbpool, timeout),
+		WalletHistoryRepository: repositories.NewWalletHistoryRepository(dbpool, timeout),
+		BankAccountRepository:   repositories.NewBankAccountRepository(dbpool, timeout),
+		Push:                    &push.Push{},
 	}
 }
 
@@ -185,6 +197,18 @@ func (c *Config) GetUserRepository() repositories.IUserRepository {
 	return c.UserRepository
 }
 
+func (c *Config) GetWalletRepository() repositories.IWalletRepository {
+	return c.WalletRepository
+}
+
+func (c *Config) GetWalletHistoryRepository() repositories.IWalletHistoryRepository {
+	return c.WalletHistoryRepository
+}
+
+func (c *Config) GetBankAccountRepository() repositories.IBankAccountRepository {
+	return c.BankAccountRepository
+}
+
 func (c *Config) GetDB() *pgxpool.Pool {
 	return c.DB
 }
@@ -199,4 +223,8 @@ func (c *Config) GetLogger() *Logger {
 
 func (c *Config) GetPush() push.IPush {
 	return &push.Push{}
+}
+
+func (c *Config) GetAPIs() apis.IAPIs {
+	return apis.NewAPIs()
 }

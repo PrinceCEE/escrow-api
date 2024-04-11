@@ -7,13 +7,14 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ITokenRepository interface {
-	Create(b *models.Token, tx pgx.Tx) error
-	Update(b *models.Token, tx pgx.Tx) error
+	Create(t *models.Token, tx pgx.Tx) error
+	Update(t *models.Token, tx pgx.Tx) error
 	GetById(id string, tx pgx.Tx) (*models.Token, error)
 	Delete(id string, tx pgx.Tx) error
 	SoftDelete(id string, tx pgx.Tx) error
@@ -51,11 +52,24 @@ func (repo *TokenRepository) Create(t *models.Token, tx pgx.Tx) error {
 		t.UpdatedAt,
 	}
 
+	var id uuid.UUID
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(&t.ID, &t.Version)
+		err := tx.QueryRow(ctx, query, args...).Scan(&id, &t.Version)
+		if err != nil {
+			return err
+		}
+
+		t.ID = id.String()
+		return nil
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(&t.ID, &t.Version)
+	err := repo.DB.QueryRow(ctx, query, args...).Scan(&id, &t.Version)
+	if err != nil {
+		return err
+	}
+
+	t.ID = id.String()
+	return nil
 }
 
 func (repo *TokenRepository) Update(t *models.Token, tx pgx.Tx) error {
@@ -76,10 +90,11 @@ func (repo *TokenRepository) Update(t *models.Token, tx pgx.Tx) error {
 	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&t.Version)
 }
 
-func (repo *TokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error) {
+func (repo *TokenRepository) getByKey(key string, value any, tx pgx.Tx) (*models.Token, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
+	var id, userId uuid.UUID
 	t := new(models.Token)
 	query := `
 		SELECT
@@ -99,15 +114,15 @@ func (repo *TokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error
 
 	var row pgx.Row
 	if tx != nil {
-		row = tx.QueryRow(ctx, query, id)
+		row = tx.QueryRow(ctx, query, value)
 	} else {
-		row = repo.DB.QueryRow(ctx, query, id)
+		row = repo.DB.QueryRow(ctx, query, value)
 	}
 
 	err := row.Scan(
-		&t.ID,
+		&id,
 		&t.Hash,
-		&t.UserID,
+		&userId,
 		&t.TokenType,
 		&t.InUse,
 		&t.CreatedAt,
@@ -119,7 +134,13 @@ func (repo *TokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error
 		return nil, err
 	}
 
+	t.ID = id.String()
+	t.UserID = userId.String()
 	return t, nil
+}
+
+func (repo *TokenRepository) GetById(id string, tx pgx.Tx) (*models.Token, error) {
+	return repo.getByKey("id", id, tx)
 }
 
 func (repo *TokenRepository) Delete(id string, tx pgx.Tx) (err error) {

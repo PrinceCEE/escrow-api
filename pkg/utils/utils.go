@@ -1,9 +1,15 @@
 package utils
 
 import (
+	"crypto/hmac"
+	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"math"
 	"math/rand"
+	"os"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -16,6 +22,20 @@ const (
 	RegStage2
 	RegStage3
 )
+
+type ContextKey struct{}
+
+type Pagination struct {
+	Offset int
+	Limit  int
+}
+
+func GetPagination(page, pageSize int) Pagination {
+	return Pagination{
+		Offset: (page - 1) * pageSize,
+		Limit:  pageSize,
+	}
+}
 
 func StructToMap(data any) (map[string]any, error) {
 	mapData := make(map[string]any)
@@ -60,7 +80,7 @@ func GetUpdateQueryFromStruct(s any, tableName string) (*queryFromStruct, error)
 	args := []any{}
 
 	for k, v := range mapData {
-		if k == "id" || k == "version" || v == nil {
+		if k == "id" || k == "version" || v == nil || (tableName == "wallet_histories" && k == "wallet") || (tableName == "users" && k == "user") {
 			continue
 		}
 
@@ -104,4 +124,74 @@ func Background(fn func()) {
 	go func() {
 		fn()
 	}()
+}
+
+func GetPage(v int) int {
+	if v == 0 {
+		return 1
+	}
+
+	return v
+}
+
+func GetPageSize(v int) int {
+	if v == 0 {
+		return 20
+	}
+
+	return v
+}
+
+func ComputeHMAC(b io.ReadCloser) (string, error) {
+	jsonData, err := json.Marshal(b)
+	if err != nil {
+		return "", err
+	}
+
+	h := hmac.New(sha512.New, []byte(os.Getenv("PAYSTACK_SECRET_KEY")))
+	_, err = h.Write(jsonData)
+
+	if err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+type WhereArgs struct {
+	Name  string
+	Value any
+}
+
+func GenerateANDWhereFromArgs(args []WhereArgs) (string, []any) {
+	newArgs := []WhereArgs{}
+	_args := []any{}
+
+	for _, v := range args {
+		v := v
+		if v.Value != nil && v.Value.(string) != "" {
+			newArgs = append(newArgs, v)
+			_args = append(_args, v.Value)
+		}
+	}
+
+	where := ""
+	for i, v := range newArgs {
+		v := v
+		if i == 0 {
+			where += fmt.Sprintf(" %s = $%d", v.Name, i+1)
+		} else {
+			where += fmt.Sprintf(" AND %s = $%d", v.Name, i+1)
+		}
+	}
+
+	if where != "" {
+		where = "WHERE " + where
+	}
+
+	return where, _args
+}
+
+func GetTotalPages(total, pageSize int) int {
+	return int(math.Ceil((float64(total) / float64(pageSize))))
 }

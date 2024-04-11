@@ -34,3 +34,8 @@ type changePasswordDto struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,min=8"`
 }
+
+type resendCodeOTPDto struct {
+	Identifier string `json:"identifier" validate:"required,email"`
+	OtpType string `json:"otp_type" validate:"required,oneof=sms email reset_password"`
+}

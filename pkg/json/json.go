@@ -2,6 +2,7 @@ package json
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 )
 
@@ -27,4 +28,25 @@ func MarshalIndent(v any) (string, error) {
 	}
 
 	return string(js), nil
+}
+
+func Marshal(v any) ([]byte, error) {
+	return json.Marshal(v)
+}
+
+func ReadTypedJSON[T any](b io.ReadCloser) (*T, error) {
+	out := new(T)
+	fmt.Println(out)
+	dec := json.NewDecoder(b)
+	err := dec.Decode(out)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+func Unmarshal(data []byte, dst any) error {
+	return json.Unmarshal(data, dst)
 }

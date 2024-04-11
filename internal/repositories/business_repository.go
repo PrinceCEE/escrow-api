@@ -7,6 +7,7 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/internal/models"
 	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -37,18 +38,31 @@ func (repo *BusinessRepository) Create(b *models.Business, tx pgx.Tx) error {
 	defer cancel()
 
 	query := `
-		INSERT INTO businesses (user_id, name, email, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO businesses (name, email, created_at, updated_at)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, version
 	`
 
-	args := []any{b.UserID, b.Name, b.Email, b.CreatedAt, b.UpdatedAt}
+	args := []any{b.Name, b.Email, b.CreatedAt, b.UpdatedAt}
 
+	var id uuid.UUID
 	if tx != nil {
-		return tx.QueryRow(ctx, query, args...).Scan(&b.ID, &b.Version)
+		err := tx.QueryRow(ctx, query, args...).Scan(&id, &b.Version)
+		if err != nil {
+			return err
+		}
+
+		b.ID = id.String()
+		return nil
 	}
 
-	return repo.DB.QueryRow(ctx, query, args...).Scan(&b.ID, &b.Version)
+	err := repo.DB.QueryRow(ctx, query, args...).Scan(&id, &b.Version)
+	if err != nil {
+		return err
+	}
+
+	b.ID = id.String()
+	return nil
 }
 
 func (repo *BusinessRepository) Update(b *models.Business, tx pgx.Tx) error {
@@ -69,7 +83,7 @@ func (repo *BusinessRepository) Update(b *models.Business, tx pgx.Tx) error {
 	return repo.DB.QueryRow(ctx, qs.Query, qs.Args...).Scan(&b.Version)
 }
 
-func (repo *BusinessRepository) GetById(id string, tx pgx.Tx) (*models.Business, error) {
+func (repo *BusinessRepository) getByKey(key string, value any, tx pgx.Tx) (*models.Business, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
 	defer cancel()
 
@@ -77,7 +91,6 @@ func (repo *BusinessRepository) GetById(id string, tx pgx.Tx) (*models.Business,
 	query := `
 		SELECT
 			id,
-			user_id,
 			name,
 			email,
 			created_at,
@@ -91,14 +104,14 @@ func (repo *BusinessRepository) GetById(id string, tx pgx.Tx) (*models.Business,
 
 	var row pgx.Row
 	if tx != nil {
-		row = tx.QueryRow(ctx, query, id)
+		row = tx.QueryRow(ctx, query, value)
 	} else {
-		row = repo.DB.QueryRow(ctx, query, id)
+		row = repo.DB.QueryRow(ctx, query, value)
 	}
 
+	var id uuid.UUID
 	err := row.Scan(
-		&b.ID,
-		&b.UserID,
+		&id,
 		&b.Name,
 		&b.Email,
 		&b.CreatedAt,
@@ -110,7 +123,12 @@ func (repo *BusinessRepository) GetById(id string, tx pgx.Tx) (*models.Business,
 		return nil, err
 	}
 
+	b.ID = id.String()
 	return b, nil
+}
+
+func (repo *BusinessRepository) GetById(id string, tx pgx.Tx) (*models.Business, error) {
+	return repo.getByKey("id", id, tx)
 }
 
 func (repo *BusinessRepository) Delete(id string, tx pgx.Tx) (err error) {
