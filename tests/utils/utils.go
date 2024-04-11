@@ -232,6 +232,15 @@ type TestWallet struct {
 	TestModelMixin
 }
 
+type TestWalletHistory struct {
+	WalletID string      `json:"wallet_id"`
+	Type     string      `json:"type"`
+	Amount   int         `json:"amount"`
+	Status   string      `json:"status"`
+	Wallet   *TestWallet `json:"wallet,omitempty"`
+	TestModelMixin
+}
+
 type MetaResponse struct {
 	Page         int    `json:"page,omitempty"`
 	PageSize     int    `json:"page_size,omitempty"`

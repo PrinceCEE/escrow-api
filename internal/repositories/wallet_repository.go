@@ -68,6 +68,12 @@ func (repo *WalletRepository) Create(w *models.Wallet, tx pgx.Tx) error {
 }
 
 func (repo *WalletRepository) Update(w *models.Wallet, tx pgx.Tx) error {
+	user := w.User
+	business := w.Business
+
+	w.User = nil
+	w.Business = nil
+
 	w.UpdatedAt = time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
@@ -77,6 +83,9 @@ func (repo *WalletRepository) Update(w *models.Wallet, tx pgx.Tx) error {
 	if err != nil {
 		return err
 	}
+
+	w.User = user
+	w.Business = business
 
 	if tx != nil {
 		return tx.QueryRow(ctx, qs.Query, qs.Args...).Scan(&w.Version)

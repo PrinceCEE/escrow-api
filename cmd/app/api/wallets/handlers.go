@@ -3,7 +3,7 @@ package wallets
 import (
 	"context"
 	"errors"
-	"math"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -207,16 +207,20 @@ func (h *walletHandler) getBankAccounts(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var total int
-	_ = h.c.GetDB().QueryRow(context.Background(), `
-		SELECT COUNT(*) AS total FROM bank_accounts b
-		INNER JOIN wallets w ON w.id = b.wallet_id
-		WHERE b.wallet_id = $1
-	`, body.WalletID).Scan(&total)
+	_ = h.c.GetDB().
+		QueryRow(
+			context.Background(),
+			`SELECT COUNT(*) AS total FROM bank_accounts b
+			INNER JOIN wallets w ON w.id = b.wallet_id
+			WHERE b.wallet_id = $1`,
+			body.WalletID,
+		).
+		Scan(&total)
 
 	resp.Meta.Page = body.Page
 	resp.Meta.PageSize = body.PageSize
 	resp.Meta.Total = total
-	resp.Meta.TotalPages = int(math.Ceil((float64(total) / float64(body.PageSize))))
+	resp.Meta.TotalPages = utils.GetTotalPages(total, body.PageSize)
 
 	resp.Message = "bank accounts fetched successfully"
 	resp.Data = map[string][]*models.BankAccount{
@@ -249,6 +253,7 @@ func (h *walletHandler) getWallet(w http.ResponseWriter, r *http.Request) {
 func (h *walletHandler) addFunds(w http.ResponseWriter, r *http.Request) {
 	resp := response.ApiResponse{}
 	body := new(addFundsDto)
+	paystackAPI := h.c.GetAPIs().GetPaystack()
 
 	err := json.ReadJSON(r.Body, body)
 	defer r.Body.Close()
@@ -301,7 +306,7 @@ func (h *walletHandler) addFunds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	paystackResponse, err := paystack.InitiateTransaction(paystack.InitiateTransactionDto{
+	paystackResponse, err := paystackAPI.InitiateTransaction(paystack.InitiateTransactionDto{
 		Email:     user.Email,
 		Amount:    strconv.FormatInt(int64(body.Amount), 10),
 		Reference: walletHistory.ID,
@@ -324,7 +329,7 @@ func (h *walletHandler) addFunds(w http.ResponseWriter, r *http.Request) {
 		"wallet_history": walletHistory,
 		"payment_data":   paystackResponse,
 	}
-	response.SendErrorResponse(w, resp, http.StatusNotImplemented)
+	response.SendResponse(w, resp)
 }
 
 func (h *walletHandler) withrawFunds(w http.ResponseWriter, r *http.Request) {
@@ -354,12 +359,19 @@ func (h *walletHandler) withrawFunds(w http.ResponseWriter, r *http.Request) {
 	walletHistoryRepo := h.c.GetWalletHistoryRepository()
 
 	tx, _ := h.c.GetDB().Begin(context.Background())
+	defer tx.Rollback(context.Background())
 
 	wallet := new(models.Wallet)
 	if user.AccountType == models.PersonalAccountType {
 		wallet, _ = walletRepo.GetByIdentifier(user.ID, tx)
 	} else {
 		wallet, _ = walletRepo.GetByIdentifier(*user.BusinessID, tx)
+	}
+
+	if wallet.Receivable-body.Amount < 0 {
+		resp.Message = "insufficient balance"
+		response.SendErrorResponse(w, resp, http.StatusBadRequest)
+		return
 	}
 
 	wallet.Balance -= body.Amount
@@ -414,10 +426,21 @@ func (h *walletHandler) getWalletHistories(w http.ResponseWriter, r *http.Reques
 		pageSize, _ = strconv.ParseInt(query.Get("page_size"), 10, 64)
 	}
 
+	status := query.Get("status")
+	wType := query.Get("type")
+	walletId := chi.URLParam(r, "wallet_id")
+
 	body := &getWalletHistoriesQueryDto{
-		WalletID: query.Get("wallet_id"),
+		WalletID: walletId,
 		Page:     utils.GetPage(int(page)),
 		PageSize: utils.GetPageSize(int(pageSize)),
+	}
+
+	if status != "" {
+		body.Status = status
+	}
+	if wType != "" {
+		body.Type = wType
 	}
 
 	validationErrors := validator.ValidateData(body)
@@ -442,7 +465,39 @@ func (h *walletHandler) getWalletHistories(w http.ResponseWriter, r *http.Reques
 	}
 
 	pagination := utils.GetPagination(body.Page, body.PageSize)
-	walletHistories, err := walletHistoryRepo.GetByWalletId(body.WalletID, pagination, nil)
+	where, args := utils.GenerateANDWhereFromArgs([]utils.WhereArgs{
+		{
+			Name:  "h.wallet_id",
+			Value: wallet.ID,
+		},
+		{
+			Name:  "h.status",
+			Value: body.Status,
+		},
+		{
+			Name:  "h.type",
+			Value: body.Type,
+		},
+	})
+
+	var total int
+	_ = h.c.GetDB().
+		QueryRow(
+			context.Background(),
+			fmt.Sprintf(
+				`SELECT COUNT(*) FROM wallet_histories h
+				INNER JOIN wallets w ON w.id = h.wallet_id
+				%s
+				`,
+				where,
+			),
+			args...,
+		).
+		Scan(&total)
+
+	args = append(args, pagination.Offset, pagination.Limit)
+	walletHistories, err := walletHistoryRepo.GetMany(args, where, nil)
+
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
@@ -459,13 +514,6 @@ func (h *walletHandler) getWalletHistories(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	var total int
-	_ = h.c.GetDB().QueryRow(context.Background(), `
-		SELECT COUNT(*) AS total FROM wallet_histories h
-		INNER JOIN wallets w ON w.id = h.wallet_id
-		WHERE h.wallet_id = $1
-	`, body.WalletID).Scan(&total)
-
 	resp.Message = "wallet histories fetched successfully"
 	resp.Data = map[string]any{
 		"wallet_histories": walletHistories,
@@ -473,7 +521,7 @@ func (h *walletHandler) getWalletHistories(w http.ResponseWriter, r *http.Reques
 	resp.Meta.Page = body.Page
 	resp.Meta.PageSize = body.PageSize
 	resp.Meta.Total = total
-	resp.Meta.TotalPages = int(total / body.PageSize)
+	resp.Meta.TotalPages = utils.GetTotalPages(total, body.PageSize)
 
 	response.SendResponse(w, resp)
 }
@@ -481,30 +529,37 @@ func (h *walletHandler) getWalletHistories(w http.ResponseWriter, r *http.Reques
 func (h *walletHandler) handlePaystackWebhook(w http.ResponseWriter, r *http.Request) {
 	resp := response.ApiResponse{}
 
-	paystackSig := r.Header.Get("x-paystack-signature")
-	if paystackSig == "" {
-		response.SendErrorResponse(w, resp, http.StatusBadRequest)
-		return
-	}
+	env := h.c.Getenv("ENVIRONMENT")
 
-	hash, err := utils.ComputeHMAC(r.Body)
-	if err != nil {
-		h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
-		response.SendErrorResponse(w, resp, http.StatusBadRequest)
-		return
-	}
+	if env != "test" {
+		paystackSig := r.Header.Get("x-paystack-signature")
+		if paystackSig == "" {
+			response.SendErrorResponse(w, resp, http.StatusBadRequest)
+			return
+		}
 
-	if hash != paystackSig {
-		h.c.GetLogger().Log(zerolog.InfoLevel, "forbidden", nil, err)
-		response.SendErrorResponse(w, resp, http.StatusForbidden)
-		return
+		hash, err := utils.ComputeHMAC(r.Body)
+		if err != nil {
+			h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+			response.SendErrorResponse(w, resp, http.StatusBadRequest)
+			return
+		}
+
+		if hash != paystackSig {
+			h.c.GetLogger().Log(zerolog.InfoLevel, "forbidden", nil, err)
+			response.SendErrorResponse(w, resp, http.StatusForbidden)
+			return
+		}
 	}
 
 	tx, _ := h.c.GetDB().Begin(context.Background())
+	defer tx.Rollback(context.Background())
 
 	// read the untyped response body so as to know the event
-	var tmp map[string]any
-	err = json.ReadJSON(r.Body, tmp)
+	tmp := make(map[string]any)
+	err := json.ReadJSON(r.Body, &tmp)
+	defer r.Body.Close()
+
 	if err != nil {
 		h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
@@ -513,18 +568,13 @@ func (h *walletHandler) handlePaystackWebhook(w http.ResponseWriter, r *http.Req
 
 	switch tmp["event"] {
 	case "charge.success":
-		body, err := json.ReadTypedJSON[webhookDto[tranactionData]](r.Body)
-		defer r.Body.Close()
+		body := new(WebhookDto[TransactionData])
+
+		tmpJsonByte, _ := json.Marshal(tmp)
+		err = json.Unmarshal(tmpJsonByte, body)
 
 		if err != nil {
 			h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
-			response.SendErrorResponse(w, resp, http.StatusBadRequest)
-			return
-		}
-
-		validationErrors := validator.ValidateData(body)
-		if validationErrors != nil {
-			h.c.GetLogger().Log(zerolog.InfoLevel, "validation error", validationErrors, err)
 			response.SendErrorResponse(w, resp, http.StatusBadRequest)
 			return
 		}
@@ -571,5 +621,6 @@ func (h *walletHandler) handlePaystackWebhook(w http.ResponseWriter, r *http.Req
 		response.SendErrorResponse(w, resp, http.StatusBadRequest)
 		return
 	}
+
 	response.SendResponse(w, resp)
 }

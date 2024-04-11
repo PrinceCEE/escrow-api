@@ -7,8 +7,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/Bupher-Co/bupher-api/cmd/app/api/wallets"
+	"github.com/Bupher-Co/bupher-api/pkg/apis/paystack"
 	"github.com/Bupher-Co/bupher-api/pkg/json"
 	test_utils "github.com/Bupher-Co/bupher-api/tests/utils"
+	"github.com/Bupher-Co/bupher-api/tests/utils/mocks/test_config"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -209,6 +212,10 @@ func (s *WalletHandlerTestSuite) TestWalletHandler() {
 	})
 
 	s.Run("manage wallets", func() {
+		var ref string
+		var walletID string
+		fundAmount := 1000000
+
 		s.Run("get wallet", func() {
 			req := s.get(url)
 			res, err := client.Do(req)
@@ -226,17 +233,175 @@ func (s *WalletHandlerTestSuite) TestWalletHandler() {
 			s.Equal(s.user.ID, respBody.Data.Wallet.Identifier)
 		})
 
-		// s.Run("add funds", func() {})
+		s.Run("add funds", func() {
+			addFundsDto := map[string]int{
+				"amount": fundAmount,
+			}
 
-		// s.Run("get pending wallet transaction", func() {})
+			paystackData := paystack.InitiateTransactionDto{
+				Amount: fmt.Sprintf("%d", addFundsDto["amount"]),
+				Email:  s.user.Email,
+			}
+			initiateTransactionResponse := paystack.InitiateTransactionResponse{}
+			paystackApi := s.ts.Config.GetAPIs().GetPaystack().(*test_config.TestPaystackAPI)
+			paystackApi.On("InitiateTransaction", paystackData).Once().Return(initiateTransactionResponse)
 
-		// s.Run("handle webhook", func() {})
+			data, _ := json.Marshal(addFundsDto)
+			req := s.post(url+"/add-funds", bytes.NewBuffer(data))
 
-		// s.Run("get successful wallet transaction", func() {})
+			res, err := client.Do(req)
+			s.NoError(err)
 
-		// s.Run("withdraw funds", func() {})
+			respBody := new(test_utils.Response[struct {
+				WalletHistory test_utils.TestWalletHistory         `json:"wallet_history"`
+				PaymentData   paystack.InitiateTransactionResponse `json:"payment_data"`
+			}])
+			_ = json.ReadJSON(res.Body, respBody)
+			defer res.Body.Close()
 
-		// s.Run("get wallet histories", func() {})
+			s.Equal(true, respBody.Success)
+			s.Equal("wallet funded successfully", respBody.Message)
+			s.Equal(addFundsDto["amount"], respBody.Data.WalletHistory.Amount)
+			s.Equal("Pending", respBody.Data.WalletHistory.Status)
+			s.Equal(0, respBody.Data.WalletHistory.Wallet.Balance)
+
+			ref = respBody.Data.WalletHistory.ID
+			walletID = respBody.Data.WalletHistory.WalletID
+		})
+
+		s.Run("get wallet histories", func() {
+			req := s.get(url + fmt.Sprintf("/%s/history?status=Pending", walletID))
+
+			res, err := client.Do(req)
+			s.NoError(err)
+
+			respBody := new(test_utils.Response[struct {
+				WalletHistories []test_utils.TestWalletHistory `json:"wallet_histories"`
+			}])
+			_ = json.ReadJSON(res.Body, respBody)
+			defer res.Body.Close()
+
+			s.Equal(true, respBody.Success)
+			s.Equal("wallet histories fetched successfully", respBody.Message)
+			s.Len(respBody.Data.WalletHistories, 1)
+
+			walletHistory := respBody.Data.WalletHistories[0]
+
+			s.Equal(ref, walletHistory.ID)
+			s.Equal(fundAmount, walletHistory.Amount)
+			s.Equal("Pending", walletHistory.Status)
+		})
+
+		s.Run("handle webhook", func() {
+			webhookDto := new(wallets.WebhookDto[wallets.TransactionData])
+			webhookDto.Event = "charge.success"
+			webhookDto.Data.Amount = fmt.Sprintf("%d", fundAmount)
+			webhookDto.Data.Reference = ref
+
+			data, _ := json.Marshal(webhookDto)
+			req := s.post(url+"/paystack-webhook", bytes.NewBuffer(data))
+
+			res, err := client.Do(req)
+			s.NoError(err)
+
+			respBody := new(test_utils.Response[any])
+			_ = json.ReadJSON(res.Body, respBody)
+			defer res.Body.Close()
+
+			s.Equal(true, respBody.Success)
+			s.Equal(http.StatusOK, res.StatusCode)
+		})
+
+		s.Run("get wallet histories", func() {
+			// fetch pending wallet histories
+			req := s.get(url + fmt.Sprintf("/%s/history?status=Pending", walletID))
+
+			res, err := client.Do(req)
+			s.NoError(err)
+
+			respBody := new(test_utils.Response[struct {
+				WalletHistories []test_utils.TestWalletHistory `json:"wallet_histories"`
+			}])
+			_ = json.ReadJSON(res.Body, respBody)
+			defer res.Body.Close()
+
+			s.Equal(true, respBody.Success)
+			s.Equal("wallet histories fetched successfully", respBody.Message)
+			s.Len(respBody.Data.WalletHistories, 0)
+
+			// fet successful wallet histories
+			req = s.get(url + fmt.Sprintf("/%s/history?status=Successful", walletID))
+
+			res, err = client.Do(req)
+			s.NoError(err)
+
+			respBody = new(test_utils.Response[struct {
+				WalletHistories []test_utils.TestWalletHistory `json:"wallet_histories"`
+			}])
+			_ = json.ReadJSON(res.Body, respBody)
+			defer res.Body.Close()
+
+			s.Equal(true, respBody.Success)
+			s.Equal("wallet histories fetched successfully", respBody.Message)
+			s.Len(respBody.Data.WalletHistories, 1)
+
+			walletHistory := respBody.Data.WalletHistories[0]
+
+			s.Equal(ref, walletHistory.ID)
+			s.Equal(fundAmount, walletHistory.Amount)
+			s.Equal("Successful", walletHistory.Status)
+			s.Equal(fundAmount, walletHistory.Wallet.Balance)
+		})
+
+		s.Run("withdraw funds", func() {
+			req := s.get(fmt.Sprintf("%s/bank-accounts?wallet_id=%s&page=1&page_size=1", url, walletID))
+			res, err := client.Do(req)
+			s.NoError(err)
+
+			respBody := new(test_utils.Response[struct {
+				BankAccounts []test_utils.TestBankAccount `json:"bank_accounts"`
+			}])
+			_ = json.ReadJSON(res.Body, respBody)
+			defer res.Body.Close()
+
+			bankAccount := respBody.Data.BankAccounts[0]
+
+			withdrawFundDto := map[string]any{
+				"amount":          2000000,
+				"bank_account_id": bankAccount.ID,
+			}
+
+			s.Run("withddraw more than available", func() {
+				data, _ := json.Marshal(withdrawFundDto)
+
+				req := s.post(url+"/withdraw-funds", bytes.NewBuffer(data))
+				res, err := client.Do(req)
+				s.NoError(err)
+
+				respBody := new(test_utils.Response[any])
+				_ = json.ReadJSON(res.Body, respBody)
+				defer res.Body.Close()
+
+				s.Equal(false, respBody.Success)
+				s.Equal("insufficient balance", respBody.Message)
+			})
+
+			s.Run("withdraw available", func() {
+				withdrawFundDto["amount"] = 500000
+				data, _ := json.Marshal(withdrawFundDto)
+
+				req := s.post(url+"/withdraw-funds", bytes.NewBuffer(data))
+				res, err := client.Do(req)
+				s.NoError(err)
+
+				respBody := new(test_utils.Response[any])
+				_ = json.ReadJSON(res.Body, respBody)
+				defer res.Body.Close()
+
+				s.Equal(true, respBody.Success)
+				s.Equal("funds successfully withdrawn", respBody.Message)
+			})
+		})
 	})
 }
 

@@ -18,6 +18,7 @@ type IWalletHistoryRepository interface {
 	Update(h *models.WalletHistory, tx pgx.Tx) error
 	GetById(id string, tx pgx.Tx) (*models.WalletHistory, error)
 	GetByWalletId(id string, pagination utils.Pagination, tx pgx.Tx) ([]*models.WalletHistory, error)
+	GetMany(args []any, where string, tx pgx.Tx) ([]*models.WalletHistory, error)
 	Delete(id string, tx pgx.Tx) error
 	SoftDelete(id string, tx pgx.Tx) error
 }
@@ -224,7 +225,65 @@ func (repo *WalletHistoryRepository) GetByWalletId(id string, pagination utils.P
 		rows = _rows
 	}
 
+	return returnFromRows(rows)
+}
+
+func (repo *WalletHistoryRepository) GetMany(args []any, where string, tx pgx.Tx) ([]*models.WalletHistory, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), repo.Timeout)
+	defer cancel()
+
+	argLen := len(args)
+	query := fmt.Sprintf(`
+		SELECT
+			h.id,
+			h.wallet_id,
+			h.type,
+			h.amount,
+			h.status,
+			h.created_at,
+			h.updated_at,
+			h.deleted_at,
+			h.version,
+			w.identifier,
+			w.balance,
+			w.receivable_balance,
+			w.payable_balance,
+			w.account_type,
+			w.created_at,
+			w.updated_at,
+			w.deleted_at,
+			w.version
+		FROM
+			wallet_histories h
+		INNER JOIN wallets w ON w.id = h.wallet_id
+		%s
+		OFFSET $%d
+		LIMIT $%d
+	`, where, argLen-1, argLen)
+
+	var rows pgx.Rows
+	if tx != nil {
+		_rows, err := tx.Query(ctx, query, args...)
+		if err != nil {
+			return nil, err
+		}
+
+		rows = _rows
+	} else {
+		_rows, err := repo.DB.Query(ctx, query, args...)
+		if err != nil {
+			return nil, err
+		}
+
+		rows = _rows
+	}
+
+	return returnFromRows(rows)
+}
+
+func returnFromRows(rows pgx.Rows) ([]*models.WalletHistory, error) {
 	walletHistories := []*models.WalletHistory{}
+
 	for rows.Next() {
 		var id, walletId uuid.UUID
 		var h models.WalletHistory
@@ -256,6 +315,7 @@ func (repo *WalletHistoryRepository) GetByWalletId(id string, pagination utils.P
 		}
 
 		h.ID = id.String()
+		h.Wallet = wallet
 		h.WalletID = walletId.String()
 		wallet.ID = walletId.String()
 		walletHistories = append(walletHistories, &h)

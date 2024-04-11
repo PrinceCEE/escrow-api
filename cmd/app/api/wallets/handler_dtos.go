@@ -24,9 +24,15 @@ type withrawFundsDto struct {
 	BankAccountId string `json:"bank_account_id" validate:"required,uuid"`
 }
 
-type getWalletHistoriesQueryDto getBankAccountsQueryDto
+type getWalletHistoriesQueryDto struct {
+	WalletID string `json:"wallet_id" validate:"uuid"`
+	Page     int    `json:"page" validate:"number,min=1"`
+	PageSize int    `json:"page_size" validate:"number,min=1,max=100"`
+	Status   string `json:"status" validate:"omitempty,oneof=Pending Successful Canceled"`
+	Type     string `json:"type" validate:"omitempty,oneof=Withdrawal Deposit"`
+}
 
-type tranactionData struct {
+type TransactionData struct {
 	ID              int       `json:"id"`
 	Domain          string    `json:"domain"`
 	Status          string    `json:"status"`
@@ -81,7 +87,7 @@ type tranactionData struct {
 	Plan any `json:"plan"`
 }
 
-type webhookDto[T any] struct {
+type WebhookDto[T any] struct {
 	Event string `json:"event"`
 	Data  T      `json:"data"`
 }

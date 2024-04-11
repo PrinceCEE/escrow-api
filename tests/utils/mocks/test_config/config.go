@@ -7,6 +7,8 @@ import (
 
 	"github.com/Bupher-Co/bupher-api/config"
 	"github.com/Bupher-Co/bupher-api/internal/repositories"
+	"github.com/Bupher-Co/bupher-api/pkg/apis"
+	"github.com/Bupher-Co/bupher-api/pkg/apis/paystack"
 	"github.com/Bupher-Co/bupher-api/pkg/push"
 	"github.com/Bupher-Co/bupher-api/tests/utils/mocks/test_repositories"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -28,18 +30,29 @@ type TestConfig struct {
 	RedisClient             *config.RedisClient
 	Logger                  *config.Logger
 	Push                    push.IPush
+	Apis                    apis.IAPIs
 	mock.Mock
 }
 
-type TestPush struct {
-	mock.Mock
-}
+type TestPush struct{ mock.Mock }
 
 func (p *TestPush) SendEmail(data *push.Email) error {
 	return nil
 }
 
 func (p *TestPush) SendSMS(data *push.Sms) {}
+
+type TestAPIs struct{ mock.Mock }
+
+type TestPaystackAPI struct{ mock.Mock }
+
+func (a *TestAPIs) GetPaystack() paystack.IPaystack {
+	return &TestPaystackAPI{}
+}
+
+func (p *TestPaystackAPI) InitiateTransaction(data paystack.InitiateTransactionDto) (*paystack.InitiateTransactionResponse, error) {
+	return &paystack.InitiateTransactionResponse{}, nil
+}
 
 func NewTestConfig() *TestConfig {
 	dbConfig, err := pgxpool.ParseConfig("postgres://postgres:password@localhost/bupher_test?sslmode=disable")
@@ -134,4 +147,8 @@ func (c *TestConfig) GetLogger() *config.Logger {
 
 func (c *TestConfig) GetPush() push.IPush {
 	return &push.Push{}
+}
+
+func (c *TestConfig) GetAPIs() apis.IAPIs {
+	return &TestAPIs{}
 }

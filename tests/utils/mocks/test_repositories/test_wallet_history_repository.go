@@ -16,6 +16,7 @@ type IWalletHistoryRepository interface {
 	Update(a *models.WalletHistory, tx pgx.Tx) error
 	GetById(id string, tx pgx.Tx) (*models.WalletHistory, error)
 	GetByWalletId(id string, pagination utils.Pagination, tx pgx.Tx) ([]*models.WalletHistory, error)
+	GetMany(args []any, where string, tx pgx.Tx) ([]*models.WalletHistory, error)
 	Delete(id string, tx pgx.Tx) error
 	SoftDelete(id string, tx pgx.Tx) error
 }
@@ -51,4 +52,8 @@ func (r *TestWalletHistoryRepository) SoftDelete(id string, tx pgx.Tx) error {
 
 func (r *TestWalletHistoryRepository) GetByWalletId(id string, pagination utils.Pagination, tx pgx.Tx) ([]*models.WalletHistory, error) {
 	return r.repo.GetByWalletId(id, pagination, tx)
+}
+
+func (r *TestWalletHistoryRepository) GetMany(args []any, where string, tx pgx.Tx) ([]*models.WalletHistory, error) {
+	return r.repo.GetMany(args, where, tx)
 }

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"os"
 	"time"
@@ -79,7 +80,7 @@ func GetUpdateQueryFromStruct(s any, tableName string) (*queryFromStruct, error)
 	args := []any{}
 
 	for k, v := range mapData {
-		if k == "id" || k == "version" || v == nil {
+		if k == "id" || k == "version" || v == nil || (tableName == "wallet_histories" && k == "wallet") || (tableName == "users" && k == "user") {
 			continue
 		}
 
@@ -155,4 +156,42 @@ func ComputeHMAC(b io.ReadCloser) (string, error) {
 	}
 
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+type WhereArgs struct {
+	Name  string
+	Value any
+}
+
+func GenerateANDWhereFromArgs(args []WhereArgs) (string, []any) {
+	newArgs := []WhereArgs{}
+	_args := []any{}
+
+	for _, v := range args {
+		v := v
+		if v.Value != nil && v.Value.(string) != "" {
+			newArgs = append(newArgs, v)
+			_args = append(_args, v.Value)
+		}
+	}
+
+	where := ""
+	for i, v := range newArgs {
+		v := v
+		if i == 0 {
+			where += fmt.Sprintf(" %s = $%d", v.Name, i+1)
+		} else {
+			where += fmt.Sprintf(" AND %s = $%d", v.Name, i+1)
+		}
+	}
+
+	if where != "" {
+		where = "WHERE " + where
+	}
+
+	return where, _args
+}
+
+func GetTotalPages(total, pageSize int) int {
+	return int(math.Ceil((float64(total) / float64(pageSize))))
 }

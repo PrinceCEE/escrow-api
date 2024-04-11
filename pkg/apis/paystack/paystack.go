@@ -8,6 +8,16 @@ import (
 	"os"
 )
 
+type IPaystack interface {
+	InitiateTransaction(InitiateTransactionDto) (*InitiateTransactionResponse, error)
+}
+
+type paystack struct{}
+
+func NewPaystackAPI() *paystack {
+	return &paystack{}
+}
+
 func sendRequest(method string, url string, body io.Reader) ([]byte, error) {
 	baseUrl := os.Getenv("PAYSTACK_BASE_URL")
 
@@ -41,7 +51,7 @@ type InitiateTransactionResponse struct {
 	Reference        string
 }
 
-func InitiateTransaction(data InitiateTransactionDto) (*InitiateTransactionResponse, error) {
+func (p *paystack) InitiateTransaction(data InitiateTransactionDto) (*InitiateTransactionResponse, error) {
 	body, _ := json.Marshal(data)
 	resp, err := sendRequest(http.MethodPost, "/transaction/initialize", bytes.NewBuffer(body))
 	if err != nil {

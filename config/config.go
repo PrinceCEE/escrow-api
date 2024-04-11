@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Bupher-Co/bupher-api/internal/repositories"
+	"github.com/Bupher-Co/bupher-api/pkg/apis"
 	"github.com/Bupher-Co/bupher-api/pkg/push"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -101,6 +102,7 @@ type IConfig interface {
 	GetRedisClient() *RedisClient
 	GetLogger() *Logger
 	GetPush() push.IPush
+	GetAPIs() apis.IAPIs
 }
 
 type Config struct {
@@ -117,6 +119,7 @@ type Config struct {
 	RedisClient             *RedisClient
 	Logger                  *Logger
 	Push                    push.IPush
+	Apis                    apis.IAPIs
 }
 
 func NewConfig() *Config {
@@ -220,4 +223,8 @@ func (c *Config) GetLogger() *Logger {
 
 func (c *Config) GetPush() push.IPush {
 	return &push.Push{}
+}
+
+func (c *Config) GetAPIs() apis.IAPIs {
+	return apis.NewAPIs()
 }

@@ -2,6 +2,7 @@ package json
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 )
 
@@ -35,6 +36,7 @@ func Marshal(v any) ([]byte, error) {
 
 func ReadTypedJSON[T any](b io.ReadCloser) (*T, error) {
 	out := new(T)
+	fmt.Println(out)
 	dec := json.NewDecoder(b)
 	err := dec.Decode(out)
 
@@ -43,4 +45,8 @@ func ReadTypedJSON[T any](b io.ReadCloser) (*T, error) {
 	}
 
 	return out, nil
+}
+
+func Unmarshal(data []byte, dst any) error {
+	return json.Unmarshal(data, dst)
 }

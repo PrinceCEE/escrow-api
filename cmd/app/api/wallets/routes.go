@@ -10,7 +10,7 @@ func WalletsRouter(c config.IConfig) chi.Router {
 	h := walletHandler{c}
 	r := chi.NewRouter()
 
-	r.Post("/webhook", h.handlePaystackWebhook)
+	r.Post("/paystack-webhook", h.handlePaystackWebhook)
 
 	r.Group(func(r chi.Router) {
 		r.Use(middlewares.AuthMiddleware(c))
