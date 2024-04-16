@@ -13,6 +13,30 @@ CREATE TYPE WITHDRAWAL_TYPE_ENUM AS ENUM (
   'Withdrawal',
   'Deposit'
 );
+CREATE TYPE TRANSACTION_TYPE_ENUM AS ENUM (
+	'Product',
+	'Service',
+	'Crypto'
+);
+CREATE TYPE TRANSACTION_CREATED_BY_ENUM AS ENUM (
+	'Seller',
+	'Buyer'
+);
+CREATE TYPE TRANSACTION_STATUS_ENUM AS ENUM (
+	'Sent-Awaiting',
+	'Pending-Payment',
+	'Pending-Delivery',
+	'Canceled',
+	'Completed'
+);
+CREATE TYPE TRANSACTION_TIMELINE_NAME_ENUM AS ENUM (
+	'Transaction Created',
+	'Transaction Approved',
+	'Payment Submitted',
+	'Delivery Done',
+	'Marked As Completed',
+	'Transaction Canceled'
+);
 
 CREATE TABLE IF NOT EXISTS businesses (
 	id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -129,4 +153,35 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
   version INT DEFAULT 1,
 
   CONSTRAINT unique_bankname_accountnumber UNIQUE(account_number,bank_name)
+);
+
+CREATE TABLE IF NOT EXISTS transactions (
+	id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+	status TRANSACTION_STATUS_ENUM NOT NULL,
+	type TRANSACTION_TYPE_ENUM NOT NULL,
+	created_by TRANSACTION_CREATED_BY_ENUM NOT NULL,
+	buyer_id UUID REFERENCES users NOT NULL,
+	seller_id UUID REFERENCES users NOT NULL,
+	delivery_duration INT NOT NULL,
+	currency VARCHAR NOT NULL,
+	charge_configuration JSON NOT NULL,
+	product_details JSON NOT NULL,
+	total_amount INT NOT NULL,
+	total_cost INT NOT NULL,
+	charges INT NOT NULL,
+	receivable_amount INT NOT NULL,
+	created_at TIMESTAMPTZ NOT NULL,
+	updated_at TIMESTAMPTZ NOT NULL,
+	deleted_at TIMESTAMPTZ,
+	version INT DEFAULT 1,
+);
+
+CREATE TABLE IF NOT EXISTS transaction_timelines (
+	id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+	name TRANSACTION_TIMELINE_NAME_ENUM NOT NULL,
+	transaction_id UUID REFERENCES transactions NOT NULL,
+	created_at TIMESTAMPTZ NOT NULL,
+	updated_at TIMESTAMPTZ NOT NULL,
+	deleted_at TIMESTAMPTZ,
+	version INT DEFAULT 1,
 );
