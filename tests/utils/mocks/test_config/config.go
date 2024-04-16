@@ -17,20 +17,22 @@ import (
 )
 
 type TestConfig struct {
-	AuthRepository          repositories.IAuthRepository
-	BusinessRepository      repositories.IBusinessRepository
-	EventRepository         repositories.IEventRepository
-	OtpRepository           repositories.IOtpRepository
-	TokenRepository         repositories.ITokenRepository
-	UserRepository          repositories.IUserRepository
-	WalletRepository        repositories.IWalletRepository
-	WalletHistoryRepository repositories.IWalletHistoryRepository
-	BankAccountRepository   repositories.IBankAccountRepository
-	DB                      *pgxpool.Pool
-	RedisClient             *config.RedisClient
-	Logger                  *config.Logger
-	Push                    push.IPush
-	Apis                    apis.IAPIs
+	AuthRepository                repositories.IAuthRepository
+	BusinessRepository            repositories.IBusinessRepository
+	EventRepository               repositories.IEventRepository
+	OtpRepository                 repositories.IOtpRepository
+	TokenRepository               repositories.ITokenRepository
+	UserRepository                repositories.IUserRepository
+	WalletRepository              repositories.IWalletRepository
+	WalletHistoryRepository       repositories.IWalletHistoryRepository
+	BankAccountRepository         repositories.IBankAccountRepository
+	TransactionRepository         repositories.ITransactionRepository
+	TransactionTimelineRepository repositories.ITransactionTimelineRepository
+	DB                            *pgxpool.Pool
+	RedisClient                   *config.RedisClient
+	Logger                        *config.Logger
+	Push                          push.IPush
+	Apis                          apis.IAPIs
 	mock.Mock
 }
 
@@ -71,18 +73,20 @@ func NewTestConfig() *TestConfig {
 			zerolog.New(io.Discard).Level(zerolog.DebugLevel).With().Timestamp().Logger(),
 			zerolog.DebugLevel,
 		),
-		RedisClient:             &config.RedisClient{},
-		DB:                      pool,
-		AuthRepository:          test_repositories.NewAuthRepository(pool, timeout),
-		BusinessRepository:      test_repositories.NewBusinessRepository(pool, timeout),
-		EventRepository:         test_repositories.NewEventRepository(pool, timeout),
-		OtpRepository:           test_repositories.NewOtpRepository(pool, timeout),
-		TokenRepository:         test_repositories.NewTokenRepository(pool, timeout),
-		UserRepository:          test_repositories.NewUserRepository(pool, timeout),
-		WalletRepository:        test_repositories.NewWalletRepository(pool, timeout),
-		WalletHistoryRepository: test_repositories.NewWalletHistoryRepository(pool, timeout),
-		BankAccountRepository:   test_repositories.NewBankAccountRepository(pool, timeout),
-		Push:                    &TestPush{},
+		RedisClient:                   &config.RedisClient{},
+		DB:                            pool,
+		AuthRepository:                test_repositories.NewAuthRepository(pool, timeout),
+		BusinessRepository:            test_repositories.NewBusinessRepository(pool, timeout),
+		EventRepository:               test_repositories.NewEventRepository(pool, timeout),
+		OtpRepository:                 test_repositories.NewOtpRepository(pool, timeout),
+		TokenRepository:               test_repositories.NewTokenRepository(pool, timeout),
+		UserRepository:                test_repositories.NewUserRepository(pool, timeout),
+		WalletRepository:              test_repositories.NewWalletRepository(pool, timeout),
+		WalletHistoryRepository:       test_repositories.NewWalletHistoryRepository(pool, timeout),
+		BankAccountRepository:         test_repositories.NewBankAccountRepository(pool, timeout),
+		TransactionRepository:         test_repositories.NewTransactionRepository(pool, timeout),
+		TransactionTimelineRepository: test_repositories.NewTransactionTimelineRepository(pool, timeout),
+		Push:                          &TestPush{},
 	}
 }
 
@@ -131,6 +135,14 @@ func (c *TestConfig) GetWalletHistoryRepository() repositories.IWalletHistoryRep
 
 func (c *TestConfig) GetBankAccountRepository() repositories.IBankAccountRepository {
 	return c.BankAccountRepository
+}
+
+func (c *TestConfig) GetTransactionRepository() repositories.ITransactionRepository {
+	return c.TransactionRepository
+}
+
+func (c *TestConfig) GetTransactionTimelineRepository() repositories.ITransactionTimelineRepository {
+	return c.TransactionTimelineRepository
 }
 
 func (c *TestConfig) GetDB() *pgxpool.Pool {

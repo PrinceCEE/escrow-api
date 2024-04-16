@@ -157,19 +157,21 @@ func NewConfig() *Config {
 
 	timeout := 10 * time.Second
 	return &Config{
-		DB:                      dbpool,
-		Logger:                  logger,
-		RedisClient:             rclient,
-		AuthRepository:          repositories.NewAuthRepository(dbpool, timeout),
-		BusinessRepository:      repositories.NewBusinessRepository(dbpool, timeout),
-		EventRepository:         repositories.NewEventRepository(dbpool, timeout),
-		TokenRepository:         repositories.NewTokenRepository(dbpool, timeout),
-		UserRepository:          repositories.NewUserRepository(dbpool, timeout),
-		OtpRepository:           repositories.NewOtpRepository(dbpool, timeout),
-		WalletRepository:        repositories.NewWalletRepository(dbpool, timeout),
-		WalletHistoryRepository: repositories.NewWalletHistoryRepository(dbpool, timeout),
-		BankAccountRepository:   repositories.NewBankAccountRepository(dbpool, timeout),
-		Push:                    &push.Push{},
+		DB:                            dbpool,
+		Logger:                        logger,
+		RedisClient:                   rclient,
+		AuthRepository:                repositories.NewAuthRepository(dbpool, timeout),
+		BusinessRepository:            repositories.NewBusinessRepository(dbpool, timeout),
+		EventRepository:               repositories.NewEventRepository(dbpool, timeout),
+		TokenRepository:               repositories.NewTokenRepository(dbpool, timeout),
+		UserRepository:                repositories.NewUserRepository(dbpool, timeout),
+		OtpRepository:                 repositories.NewOtpRepository(dbpool, timeout),
+		WalletRepository:              repositories.NewWalletRepository(dbpool, timeout),
+		WalletHistoryRepository:       repositories.NewWalletHistoryRepository(dbpool, timeout),
+		BankAccountRepository:         repositories.NewBankAccountRepository(dbpool, timeout),
+		TransactionRepository:         repositories.NewTransactionRepository(dbpool, timeout),
+		TransactionTimelineRepository: repositories.NewTransactionTimelineRepository(dbpool, timeout),
+		Push:                          &push.Push{},
 	}
 }
 
