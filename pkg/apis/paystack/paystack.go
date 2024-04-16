@@ -43,6 +43,7 @@ type InitiateTransactionDto struct {
 	Email     string `json:"email"`
 	Amount    string `json:"amount"`
 	Reference string `json:"reference"`
+	MetaData  any    `json:"metadata"`
 }
 
 type InitiateTransactionResponse struct {

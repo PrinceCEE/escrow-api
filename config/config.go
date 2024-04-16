@@ -98,6 +98,8 @@ type IConfig interface {
 	GetWalletRepository() repositories.IWalletRepository
 	GetWalletHistoryRepository() repositories.IWalletHistoryRepository
 	GetBankAccountRepository() repositories.IBankAccountRepository
+	GetTransactionRepository() repositories.ITransactionRepository
+	GetTransactionTimelineRepository() repositories.ITransactionTimelineRepository
 	GetDB() *pgxpool.Pool
 	GetRedisClient() *RedisClient
 	GetLogger() *Logger
@@ -106,20 +108,22 @@ type IConfig interface {
 }
 
 type Config struct {
-	AuthRepository          repositories.IAuthRepository
-	BusinessRepository      repositories.IBusinessRepository
-	EventRepository         repositories.IEventRepository
-	OtpRepository           repositories.IOtpRepository
-	TokenRepository         repositories.ITokenRepository
-	UserRepository          repositories.IUserRepository
-	WalletRepository        repositories.IWalletRepository
-	WalletHistoryRepository repositories.IWalletHistoryRepository
-	BankAccountRepository   repositories.IBankAccountRepository
-	DB                      *pgxpool.Pool
-	RedisClient             *RedisClient
-	Logger                  *Logger
-	Push                    push.IPush
-	Apis                    apis.IAPIs
+	AuthRepository                repositories.IAuthRepository
+	BusinessRepository            repositories.IBusinessRepository
+	EventRepository               repositories.IEventRepository
+	OtpRepository                 repositories.IOtpRepository
+	TokenRepository               repositories.ITokenRepository
+	UserRepository                repositories.IUserRepository
+	WalletRepository              repositories.IWalletRepository
+	WalletHistoryRepository       repositories.IWalletHistoryRepository
+	BankAccountRepository         repositories.IBankAccountRepository
+	TransactionRepository         repositories.ITransactionRepository
+	TransactionTimelineRepository repositories.ITransactionTimelineRepository
+	DB                            *pgxpool.Pool
+	RedisClient                   *RedisClient
+	Logger                        *Logger
+	Push                          push.IPush
+	Apis                          apis.IAPIs
 }
 
 func NewConfig() *Config {
@@ -207,6 +211,14 @@ func (c *Config) GetWalletHistoryRepository() repositories.IWalletHistoryReposit
 
 func (c *Config) GetBankAccountRepository() repositories.IBankAccountRepository {
 	return c.BankAccountRepository
+}
+
+func (c *Config) GetTransactionRepository() repositories.ITransactionRepository {
+	return c.TransactionRepository
+}
+
+func (c *Config) GetTransactionTimelineRepository() repositories.ITransactionTimelineRepository {
+	return c.TransactionTimelineRepository
 }
 
 func (c *Config) GetDB() *pgxpool.Pool {
