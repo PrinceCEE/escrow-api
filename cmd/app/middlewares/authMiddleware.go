@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
-	"github.com/Bupher-Co/bupher-api/config"
-	"github.com/Bupher-Co/bupher-api/pkg/jwt"
-	"github.com/Bupher-Co/bupher-api/pkg/utils"
 	"github.com/jackc/pgx/v5"
+	"github.com/princecee/escrow-api/cmd/app/pkg/response"
+	"github.com/princecee/escrow-api/config"
+	"github.com/princecee/escrow-api/pkg/jwt"
+	"github.com/princecee/escrow-api/pkg/utils"
 )
 
 func AuthMiddleware(c config.IConfig) func(http.Handler) http.Handler {

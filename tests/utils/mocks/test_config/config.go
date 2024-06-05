@@ -3,15 +3,16 @@ package test_config
 import (
 	"context"
 	"io"
+	"os"
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/config"
-	"github.com/Bupher-Co/bupher-api/internal/repositories"
-	"github.com/Bupher-Co/bupher-api/pkg/apis"
-	"github.com/Bupher-Co/bupher-api/pkg/apis/paystack"
-	"github.com/Bupher-Co/bupher-api/pkg/push"
-	"github.com/Bupher-Co/bupher-api/tests/utils/mocks/test_repositories"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/princecee/escrow-api/config"
+	"github.com/princecee/escrow-api/internal/repositories"
+	"github.com/princecee/escrow-api/pkg/apis"
+	"github.com/princecee/escrow-api/pkg/apis/paystack"
+	"github.com/princecee/escrow-api/pkg/push"
+	"github.com/princecee/escrow-api/tests/utils/mocks/test_repositories"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/mock"
 )
@@ -57,7 +58,7 @@ func (p *TestPaystackAPI) InitiateTransaction(data paystack.InitiateTransactionD
 }
 
 func NewTestConfig() *TestConfig {
-	dbConfig, err := pgxpool.ParseConfig("postgres://postgres:password@localhost/bupher_test?sslmode=disable")
+	dbConfig, err := pgxpool.ParseConfig(os.Getenv("DSN"))
 	if err != nil {
 		panic(err)
 	}

@@ -1,8 +1,8 @@
 package customers
 
 import (
-	"github.com/Bupher-Co/bupher-api/config"
 	"github.com/go-chi/chi/v5"
+	"github.com/princecee/escrow-api/config"
 )
 
 func CustomerRouter(c config.IConfig) chi.Router {

@@ -1,6 +1,6 @@
 package apis
 
-import "github.com/Bupher-Co/bupher-api/pkg/apis/paystack"
+import "github.com/princecee/escrow-api/pkg/apis/paystack"
 
 type IAPIs interface {
 	GetPaystack() paystack.IPaystack

@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/internal/repositories"
-	"github.com/Bupher-Co/bupher-api/pkg/apis"
-	"github.com/Bupher-Co/bupher-api/pkg/push"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/princecee/escrow-api/internal/repositories"
+	"github.com/princecee/escrow-api/pkg/apis"
+	"github.com/princecee/escrow-api/pkg/push"
 	"github.com/rs/zerolog"
 )
 

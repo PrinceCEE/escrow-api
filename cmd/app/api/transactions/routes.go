@@ -1,9 +1,9 @@
 package transactions
 
 import (
-	"github.com/Bupher-Co/bupher-api/cmd/app/middlewares"
-	"github.com/Bupher-Co/bupher-api/config"
 	"github.com/go-chi/chi/v5"
+	"github.com/princecee/escrow-api/cmd/app/middlewares"
+	"github.com/princecee/escrow-api/config"
 )
 
 func TransactionsRouter(c config.IConfig) chi.Router {

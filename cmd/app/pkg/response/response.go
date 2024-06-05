@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Bupher-Co/bupher-api/pkg/json"
+	"github.com/princecee/escrow-api/pkg/json"
 )
 
 var (

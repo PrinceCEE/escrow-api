@@ -7,11 +7,11 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/routes"
-	"github.com/Bupher-Co/bupher-api/config"
-	"github.com/Bupher-Co/bupher-api/pkg/json"
-	"github.com/Bupher-Co/bupher-api/tests/utils/mocks/test_config"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/princecee/escrow-api/cmd/app/pkg/routes"
+	"github.com/princecee/escrow-api/config"
+	"github.com/princecee/escrow-api/pkg/json"
+	"github.com/princecee/escrow-api/tests/utils/mocks/test_config"
 )
 
 const (

@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/routes"
-	"github.com/Bupher-Co/bupher-api/config"
+	"github.com/princecee/escrow-api/cmd/app/pkg/routes"
+	"github.com/princecee/escrow-api/config"
 )
 
 func main() {
