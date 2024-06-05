@@ -3,8 +3,8 @@ package businesses
 import (
 	"net/http"
 
-	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
-	"github.com/Bupher-Co/bupher-api/config"
+	"github.com/princecee/escrow-api/cmd/app/pkg/response"
+	"github.com/princecee/escrow-api/config"
 )
 
 type businessHandler struct {

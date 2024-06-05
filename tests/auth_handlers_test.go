@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Bupher-Co/bupher-api/pkg/json"
-	test_utils "github.com/Bupher-Co/bupher-api/tests/utils"
+	"github.com/princecee/escrow-api/pkg/json"
+	test_utils "github.com/princecee/escrow-api/tests/utils"
 	"github.com/stretchr/testify/suite"
 )
 

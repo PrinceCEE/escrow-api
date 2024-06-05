@@ -7,15 +7,15 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
-	"github.com/Bupher-Co/bupher-api/config"
-	"github.com/Bupher-Co/bupher-api/internal/models"
-	"github.com/Bupher-Co/bupher-api/pkg/apis/paystack"
-	"github.com/Bupher-Co/bupher-api/pkg/json"
-	"github.com/Bupher-Co/bupher-api/pkg/utils"
-	"github.com/Bupher-Co/bupher-api/pkg/validator"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/princecee/escrow-api/cmd/app/pkg/response"
+	"github.com/princecee/escrow-api/config"
+	"github.com/princecee/escrow-api/internal/models"
+	"github.com/princecee/escrow-api/pkg/apis/paystack"
+	"github.com/princecee/escrow-api/pkg/json"
+	"github.com/princecee/escrow-api/pkg/utils"
+	"github.com/princecee/escrow-api/pkg/validator"
 	"github.com/rs/zerolog"
 )
 
@@ -581,37 +581,76 @@ func (h *walletHandler) handlePaystackWebhook(w http.ResponseWriter, r *http.Req
 
 		walletHistoryRepo := h.c.GetWalletHistoryRepository()
 		walletRepo := h.c.GetWalletRepository()
+		transactionRepo := h.c.GetTransactionRepository()
+		transactionTimelineRepo := h.c.GetTransactionTimelineRepository()
 
-		walletHistory, err := walletHistoryRepo.GetById(body.Data.Reference, tx)
-		if err != nil {
-			h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
-			response.SendErrorResponse(w, resp, http.StatusBadRequest)
-			return
-		}
+		isForTransaction, ok := body.Data.Metadata.(map[string]any)["is_for_transaction"]
+		if !ok {
+			walletHistory, err := walletHistoryRepo.GetById(body.Data.Reference, tx)
+			if err != nil {
+				h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+				response.SendErrorResponse(w, resp, http.StatusBadRequest)
+				return
+			}
 
-		wallet, err := walletRepo.GetById(walletHistory.WalletID, tx)
-		if err != nil {
-			h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
-			response.SendErrorResponse(w, resp, http.StatusBadRequest)
-			return
-		}
+			wallet, err := walletRepo.GetById(walletHistory.WalletID, tx)
+			if err != nil {
+				h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+				response.SendErrorResponse(w, resp, http.StatusBadRequest)
+				return
+			}
 
-		walletHistory.Status = models.WalletHistorySuccessful
-		wallet.Balance += walletHistory.Amount
-		wallet.Receivable += walletHistory.Amount
+			walletHistory.Status = models.WalletHistorySuccessful
+			wallet.Balance += walletHistory.Amount
+			wallet.Receivable += walletHistory.Amount
 
-		err = walletHistoryRepo.Update(walletHistory, tx)
-		if err != nil {
-			h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
-			response.SendErrorResponse(w, resp, http.StatusBadRequest)
-			return
-		}
+			err = walletHistoryRepo.Update(walletHistory, tx)
+			if err != nil {
+				h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+				response.SendErrorResponse(w, resp, http.StatusBadRequest)
+				return
+			}
 
-		err = walletRepo.Update(wallet, tx)
-		if err != nil {
-			h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
-			response.SendErrorResponse(w, resp, http.StatusBadRequest)
-			return
+			err = walletRepo.Update(wallet, tx)
+			if err != nil {
+				h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+				response.SendErrorResponse(w, resp, http.StatusBadRequest)
+				return
+			}
+		} else {
+			if !isForTransaction.(bool) {
+				if err != nil {
+					h.c.GetLogger().Log(zerolog.InfoLevel, "is_for_transaction wrongly placed", nil, err)
+					response.SendErrorResponse(w, resp, http.StatusBadRequest)
+					return
+				}
+			}
+
+			transaction, err := transactionRepo.GetById(body.Data.Reference, tx)
+			if err != nil {
+				h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+				response.SendErrorResponse(w, resp, http.StatusBadRequest)
+				return
+			}
+
+			transaction.Status = models.TransactionStatusPendingDelivery
+			err = transactionRepo.Update(transaction, tx)
+			if err != nil {
+				h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+				response.SendErrorResponse(w, resp, http.StatusBadRequest)
+				return
+			}
+
+			timeline := &models.TransactionTimeline{
+				TransactionID: transaction.ID,
+				Name:          models.TimelinePaymentSubmitted,
+			}
+			err = transactionTimelineRepo.Create(timeline, tx)
+			if err != nil {
+				h.c.GetLogger().Log(zerolog.InfoLevel, err.Error(), nil, err)
+				response.SendErrorResponse(w, resp, http.StatusBadRequest)
+				return
+			}
 		}
 	}
 

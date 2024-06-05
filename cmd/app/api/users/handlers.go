@@ -7,14 +7,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/response"
-	"github.com/Bupher-Co/bupher-api/config"
-	"github.com/Bupher-Co/bupher-api/internal/models"
-	"github.com/Bupher-Co/bupher-api/pkg/json"
-	"github.com/Bupher-Co/bupher-api/pkg/utils"
-	"github.com/Bupher-Co/bupher-api/pkg/validator"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/princecee/escrow-api/cmd/app/pkg/response"
+	"github.com/princecee/escrow-api/config"
+	"github.com/princecee/escrow-api/internal/models"
+	"github.com/princecee/escrow-api/pkg/json"
+	"github.com/princecee/escrow-api/pkg/utils"
+	"github.com/princecee/escrow-api/pkg/validator"
 )
 
 type userHandler struct {

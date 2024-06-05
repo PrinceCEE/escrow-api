@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Bupher-Co/bupher-api/cmd/app/api/wallets"
-	"github.com/Bupher-Co/bupher-api/pkg/apis/paystack"
-	"github.com/Bupher-Co/bupher-api/pkg/json"
-	test_utils "github.com/Bupher-Co/bupher-api/tests/utils"
-	"github.com/Bupher-Co/bupher-api/tests/utils/mocks/test_config"
+	"github.com/princecee/escrow-api/cmd/app/api/wallets"
+	"github.com/princecee/escrow-api/pkg/apis/paystack"
+	"github.com/princecee/escrow-api/pkg/json"
+	test_utils "github.com/princecee/escrow-api/tests/utils"
+	"github.com/princecee/escrow-api/tests/utils/mocks/test_config"
 	"github.com/stretchr/testify/suite"
 )
 

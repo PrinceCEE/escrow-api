@@ -3,10 +3,10 @@ package test_repositories
 import (
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/internal/models"
-	"github.com/Bupher-Co/bupher-api/internal/repositories"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/princecee/escrow-api/internal/models"
+	"github.com/princecee/escrow-api/internal/repositories"
 	"github.com/stretchr/testify/mock"
 )
 

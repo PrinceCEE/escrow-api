@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"github.com/Bupher-Co/bupher-api/pkg/utils"
+	"github.com/princecee/escrow-api/pkg/utils"
 )
 
 type signUpDto struct {
@@ -37,5 +37,5 @@ type changePasswordDto struct {
 
 type resendCodeOTPDto struct {
 	Identifier string `json:"identifier" validate:"required,email"`
-	OtpType string `json:"otp_type" validate:"required,oneof=sms email reset_password"`
+	OtpType    string `json:"otp_type" validate:"required,oneof=sms email reset_password"`
 }

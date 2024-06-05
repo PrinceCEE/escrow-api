@@ -17,7 +17,7 @@ type TokenClaims struct {
 func GenerateToken(t *TokenClaims) (string, error) {
 	key := []byte(os.Getenv("JWT_KEY"))
 	t.IssuedAt = jwt.NewNumericDate(time.Now())
-	t.Issuer = "bupherco"
+	t.Issuer = "escrowAPI"
 	t.Subject = t.UserID
 
 	if t.TokenType == "access_token" {

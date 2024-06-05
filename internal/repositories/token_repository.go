@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/internal/models"
-	"github.com/Bupher-Co/bupher-api/pkg/utils"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/princecee/escrow-api/internal/models"
+	"github.com/princecee/escrow-api/pkg/utils"
 )
 
 type ITokenRepository interface {

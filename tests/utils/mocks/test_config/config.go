@@ -3,34 +3,37 @@ package test_config
 import (
 	"context"
 	"io"
+	"os"
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/config"
-	"github.com/Bupher-Co/bupher-api/internal/repositories"
-	"github.com/Bupher-Co/bupher-api/pkg/apis"
-	"github.com/Bupher-Co/bupher-api/pkg/apis/paystack"
-	"github.com/Bupher-Co/bupher-api/pkg/push"
-	"github.com/Bupher-Co/bupher-api/tests/utils/mocks/test_repositories"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/princecee/escrow-api/config"
+	"github.com/princecee/escrow-api/internal/repositories"
+	"github.com/princecee/escrow-api/pkg/apis"
+	"github.com/princecee/escrow-api/pkg/apis/paystack"
+	"github.com/princecee/escrow-api/pkg/push"
+	"github.com/princecee/escrow-api/tests/utils/mocks/test_repositories"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/mock"
 )
 
 type TestConfig struct {
-	AuthRepository          repositories.IAuthRepository
-	BusinessRepository      repositories.IBusinessRepository
-	EventRepository         repositories.IEventRepository
-	OtpRepository           repositories.IOtpRepository
-	TokenRepository         repositories.ITokenRepository
-	UserRepository          repositories.IUserRepository
-	WalletRepository        repositories.IWalletRepository
-	WalletHistoryRepository repositories.IWalletHistoryRepository
-	BankAccountRepository   repositories.IBankAccountRepository
-	DB                      *pgxpool.Pool
-	RedisClient             *config.RedisClient
-	Logger                  *config.Logger
-	Push                    push.IPush
-	Apis                    apis.IAPIs
+	AuthRepository                repositories.IAuthRepository
+	BusinessRepository            repositories.IBusinessRepository
+	EventRepository               repositories.IEventRepository
+	OtpRepository                 repositories.IOtpRepository
+	TokenRepository               repositories.ITokenRepository
+	UserRepository                repositories.IUserRepository
+	WalletRepository              repositories.IWalletRepository
+	WalletHistoryRepository       repositories.IWalletHistoryRepository
+	BankAccountRepository         repositories.IBankAccountRepository
+	TransactionRepository         repositories.ITransactionRepository
+	TransactionTimelineRepository repositories.ITransactionTimelineRepository
+	DB                            *pgxpool.Pool
+	RedisClient                   *config.RedisClient
+	Logger                        *config.Logger
+	Push                          push.IPush
+	Apis                          apis.IAPIs
 	mock.Mock
 }
 
@@ -55,7 +58,7 @@ func (p *TestPaystackAPI) InitiateTransaction(data paystack.InitiateTransactionD
 }
 
 func NewTestConfig() *TestConfig {
-	dbConfig, err := pgxpool.ParseConfig("postgres://postgres:password@localhost/bupher_test?sslmode=disable")
+	dbConfig, err := pgxpool.ParseConfig(os.Getenv("DSN"))
 	if err != nil {
 		panic(err)
 	}
@@ -71,18 +74,20 @@ func NewTestConfig() *TestConfig {
 			zerolog.New(io.Discard).Level(zerolog.DebugLevel).With().Timestamp().Logger(),
 			zerolog.DebugLevel,
 		),
-		RedisClient:             &config.RedisClient{},
-		DB:                      pool,
-		AuthRepository:          test_repositories.NewAuthRepository(pool, timeout),
-		BusinessRepository:      test_repositories.NewBusinessRepository(pool, timeout),
-		EventRepository:         test_repositories.NewEventRepository(pool, timeout),
-		OtpRepository:           test_repositories.NewOtpRepository(pool, timeout),
-		TokenRepository:         test_repositories.NewTokenRepository(pool, timeout),
-		UserRepository:          test_repositories.NewUserRepository(pool, timeout),
-		WalletRepository:        test_repositories.NewWalletRepository(pool, timeout),
-		WalletHistoryRepository: test_repositories.NewWalletHistoryRepository(pool, timeout),
-		BankAccountRepository:   test_repositories.NewBankAccountRepository(pool, timeout),
-		Push:                    &TestPush{},
+		RedisClient:                   &config.RedisClient{},
+		DB:                            pool,
+		AuthRepository:                test_repositories.NewAuthRepository(pool, timeout),
+		BusinessRepository:            test_repositories.NewBusinessRepository(pool, timeout),
+		EventRepository:               test_repositories.NewEventRepository(pool, timeout),
+		OtpRepository:                 test_repositories.NewOtpRepository(pool, timeout),
+		TokenRepository:               test_repositories.NewTokenRepository(pool, timeout),
+		UserRepository:                test_repositories.NewUserRepository(pool, timeout),
+		WalletRepository:              test_repositories.NewWalletRepository(pool, timeout),
+		WalletHistoryRepository:       test_repositories.NewWalletHistoryRepository(pool, timeout),
+		BankAccountRepository:         test_repositories.NewBankAccountRepository(pool, timeout),
+		TransactionRepository:         test_repositories.NewTransactionRepository(pool, timeout),
+		TransactionTimelineRepository: test_repositories.NewTransactionTimelineRepository(pool, timeout),
+		Push:                          &TestPush{},
 	}
 }
 
@@ -131,6 +136,14 @@ func (c *TestConfig) GetWalletHistoryRepository() repositories.IWalletHistoryRep
 
 func (c *TestConfig) GetBankAccountRepository() repositories.IBankAccountRepository {
 	return c.BankAccountRepository
+}
+
+func (c *TestConfig) GetTransactionRepository() repositories.ITransactionRepository {
+	return c.TransactionRepository
+}
+
+func (c *TestConfig) GetTransactionTimelineRepository() repositories.ITransactionTimelineRepository {
+	return c.TransactionTimelineRepository
 }
 
 func (c *TestConfig) GetDB() *pgxpool.Pool {

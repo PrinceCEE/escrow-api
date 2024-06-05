@@ -1,4 +1,4 @@
-module github.com/Bupher-Co/bupher-api
+module github.com/princecee/escrow-api
 
 go 1.20
 

@@ -7,11 +7,11 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/Bupher-Co/bupher-api/cmd/app/pkg/routes"
-	"github.com/Bupher-Co/bupher-api/config"
-	"github.com/Bupher-Co/bupher-api/pkg/json"
-	"github.com/Bupher-Co/bupher-api/tests/utils/mocks/test_config"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/princecee/escrow-api/cmd/app/pkg/routes"
+	"github.com/princecee/escrow-api/config"
+	"github.com/princecee/escrow-api/pkg/json"
+	"github.com/princecee/escrow-api/tests/utils/mocks/test_config"
 )
 
 const (
@@ -33,6 +33,30 @@ const setupTypesSql = `
 	CREATE TYPE WITHDRAWAL_TYPE_ENUM AS ENUM (
 		'Withdrawal',
 		'Deposit'
+	);
+	CREATE TYPE TRANSACTION_TYPE_ENUM AS ENUM (
+		'Product',
+		'Service',
+		'Crypto'
+	);
+	CREATE TYPE TRANSACTION_CREATED_BY_ENUM AS ENUM (
+		'Seller',
+		'Buyer'
+	);
+	CREATE TYPE TRANSACTION_STATUS_ENUM AS ENUM (
+		'Sent-Awaiting',
+		'Pending-Payment',
+		'Pending-Delivery',
+		'Canceled',
+		'Completed'
+	);
+	CREATE TYPE TRANSACTION_TIMELINE_NAME_ENUM AS ENUM (
+		'Transaction Created',
+		'Transaction Approved',
+		'Payment Submitted',
+		'Delivery Done',
+		'Marked As Completed',
+		'Transaction Canceled'
 	);
 
 	CREATE TABLE IF NOT EXISTS businesses (
@@ -151,6 +175,37 @@ const setupTypesSql = `
 
 		CONSTRAINT unique_bankname_accountnumber UNIQUE(account_number,bank_name)
 	);
+
+	CREATE TABLE IF NOT EXISTS transactions (
+		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		status TRANSACTION_STATUS_ENUM NOT NULL,
+		type TRANSACTION_TYPE_ENUM NOT NULL,
+		created_by TRANSACTION_CREATED_BY_ENUM NOT NULL,
+		buyer_id UUID REFERENCES users NOT NULL,
+		seller_id UUID REFERENCES users NOT NULL,
+		delivery_duration INT NOT NULL,
+		currency VARCHAR NOT NULL,
+		charge_configuration JSON NOT NULL,
+		product_details JSON NOT NULL,
+		total_amount INT NOT NULL,
+		total_cost INT NOT NULL,
+		charges INT NOT NULL,
+		receivable_amount INT NOT NULL,
+		created_at TIMESTAMPTZ NOT NULL,
+		updated_at TIMESTAMPTZ NOT NULL,
+		deleted_at TIMESTAMPTZ,
+		version INT DEFAULT 1,
+	);
+
+	CREATE TABLE IF NOT EXISTS transaction_timelines (
+		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		name TRANSACTION_TIMELINE_NAME_ENUM NOT NULL,
+		transaction_id UUID REFERENCES transactions NOT NULL,
+		created_at TIMESTAMPTZ NOT NULL,
+		updated_at TIMESTAMPTZ NOT NULL,
+		deleted_at TIMESTAMPTZ,
+		version INT DEFAULT 1,
+	);
 `
 
 var tearDownTypesSql = `
@@ -163,6 +218,8 @@ var tearDownTypesSql = `
 	DROP TABLE IF EXISTS wallets;
 	DROP TABLE IF EXISTS users;
 	DROP TABLE IF EXISTS businesses;
+	DROP TABLE IF EXISTS transactions;
+	DROP TABLE IF EXISTS transaction_timelines;
 
 	DROP TYPE IF EXISTS ACCOUNT_TYPE_ENUM;
 	DROP TYPE IF EXISTS EVENT_ENVIRONMENT_ENUM;
@@ -171,6 +228,10 @@ var tearDownTypesSql = `
 	DROP TYPE IF EXISTS OTP_TYPE;
 	DROP TYPE IF EXISTS MODEL_STATUS_ENUM;
 	DROP TYPE IF EXISTS WITHDRAWAL_TYPE_ENUM;
+	DROP TYPE IF EXISTS TRANSACTION_TYPE_ENUM;
+	DROP TYPE IF EXISTS TRANSACTION_CREATED_BY_ENUM;
+	DROP TYPE IF EXISTS TRANSACTION_STATUS_ENUM;
+	DROP TYPE IF EXISTS TRANSACTION_TIMELINE_NAME_ENUM;
 `
 
 func createTablesAndTypes(pool *pgxpool.Pool) error {
